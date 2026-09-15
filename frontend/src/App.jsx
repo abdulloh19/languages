@@ -103,8 +103,8 @@ export default function App() {
           
           {/* Logo & Level Pill */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-black text-white shadow-md shadow-sky-500/25">
-              AG
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-600 to-purple-600 flex items-center justify-center font-black text-white shadow-md shadow-sky-500/25">
+              <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
             </div>
             <div>
               <div className="font-extrabold text-white text-sm sm:text-base tracking-tight flex items-center gap-1.5">
@@ -116,10 +116,24 @@ export default function App() {
               </div>
             </div>
 
+            {/* Quick Super Ilova Menu Trigger Button */}
+            <button
+              onClick={() => setActiveTab('menu')}
+              className={`ml-1 px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-sm border active:scale-95 ${
+                activeTab === 'menu'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-400 shadow-amber-500/25'
+                  : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/30'
+              }`}
+              title="Super Animatsion Menyu"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Super Ilova</span>
+            </button>
+
             {/* CEFR Level Selector Pill */}
             <button
               onClick={() => setLevelModalOpen(true)}
-              className="ml-1 sm:ml-2 px-2.5 py-1 rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 text-xs font-black text-amber-300 flex items-center gap-1 transition active:scale-95 shadow-sm"
+              className="px-2.5 py-1 rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 text-xs font-black text-amber-300 flex items-center gap-1 transition active:scale-95 shadow-sm"
               title="Darajani almashtirish"
             >
               <Award className="w-3.5 h-3.5 text-amber-400" />
@@ -177,6 +191,16 @@ export default function App() {
             <BookOpen className="w-3.5 h-3.5" /> 20 Kunlik Darslar
           </button>
           <button
+            onClick={() => setActiveTab('menu')}
+            className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+              activeTab === 'menu'
+                ? 'bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md'
+                : 'text-amber-300 hover:text-white bg-amber-500/10 border border-amber-500/20'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" /> ✨ Super Ilova (12 Menyu)
+          </button>
+          <button
             onClick={() => setActiveTab('audio')}
             className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
               activeTab === 'audio'
@@ -185,16 +209,6 @@ export default function App() {
             }`}
           >
             <Volume2 className="w-3.5 h-3.5" /> Audio Lug'at
-          </button>
-          <button
-            onClick={() => setActiveTab('menu')}
-            className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
-              activeTab === 'menu'
-                ? 'bg-sky-500 text-white shadow-md'
-                : 'text-slate-400 hover:text-white bg-slate-900/60'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" /> 12 Portal
           </button>
           <button
             onClick={() => setActiveTab('admin')}

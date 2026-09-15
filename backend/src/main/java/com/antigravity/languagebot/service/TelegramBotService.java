@@ -124,6 +124,41 @@ public class TelegramBotService extends TelegramLongPollingBot {
         }
     }
 
+    public boolean configureSuperIlovaMenuButtonForChat(Long chatId, String appUrl) {
+        if (botToken == null || "none".equalsIgnoreCase(botToken) || appUrl == null || appUrl.isBlank() || chatId == null) {
+            return false;
+        }
+        try {
+            String endpoint = "https://api.telegram.org/bot" + botToken + "/setChatMenuButton";
+            String jsonPayload = String.format("""
+                {
+                  "chat_id": %d,
+                  "menu_button": {
+                    "type": "web_app",
+                    "text": "Super ilova",
+                    "web_app": {
+                      "url": "%s"
+                    }
+                  }
+                }
+                """, chatId, appUrl);
+
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(endpoint))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            log.info("Telegram setChatMenuButton for chat {} response: {}", chatId, response.body());
+            return response.statusCode() == 200 && response.body().contains("\"ok\":true");
+        } catch (Exception e) {
+            log.error("Failed to set Telegram ChatMenuButton for chat {}: {}", chatId, e.getMessage());
+            return false;
+        }
+    }
+
     public record SimulationResponse(
             String replyText,
             List<List<String>> inlineButtons,
@@ -170,6 +205,9 @@ public class TelegramBotService extends TelegramLongPollingBot {
 
     private void handleIncomingMessage(Long chatId, String text, User user) {
         if (text != null && (text.equalsIgnoreCase("/start") || text.equalsIgnoreCase("/menu"))) {
+            if (webAppUrl != null && !webAppUrl.isBlank()) {
+                configureSuperIlovaMenuButtonForChat(chatId, webAppUrl);
+            }
             sendReplyKeyboard(chatId);
         }
         SimulationResponse resp = processAction(user, text, null);
