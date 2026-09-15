@@ -11,8 +11,8 @@ spring:
 
 telegram:
   bot:
-    username: ${TELEGRAM_BOT_USERNAME:LanguageLearningMasterBot}
-    token: ${TELEGRAM_BOT_TOKEN:none}
+    username: ${TELEGRAM_BOT_USERNAME:languageForZubayr_bot}
+    token: ${TELEGRAM_BOT_TOKEN:8808898451:AAEvTPKnGwNhJcatziSJ0YPIaEOVRYdXTFg}
     enabled: true
 
 app:

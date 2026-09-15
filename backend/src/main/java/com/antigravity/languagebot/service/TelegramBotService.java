@@ -37,19 +37,22 @@ public class TelegramBotService extends TelegramLongPollingBot {
     private final SuperMenuService superMenuService;
     private final GameService gameService;
     private final PsychologicalNudgeService psychologicalNudgeService;
+    private final TtsAudioService ttsAudioService;
 
     public TelegramBotService(UserRepository userRepository,
                               TopicRepository topicRepository,
                               LearningFlowService learningFlowService,
                               SuperMenuService superMenuService,
                               GameService gameService,
-                              PsychologicalNudgeService psychologicalNudgeService) {
+                              PsychologicalNudgeService psychologicalNudgeService,
+                              TtsAudioService ttsAudioService) {
         this.userRepository = userRepository;
         this.topicRepository = topicRepository;
         this.learningFlowService = learningFlowService;
         this.superMenuService = superMenuService;
         this.gameService = gameService;
         this.psychologicalNudgeService = psychologicalNudgeService;
+        this.ttsAudioService = ttsAudioService;
     }
 
     @Override
@@ -107,13 +110,52 @@ public class TelegramBotService extends TelegramLongPollingBot {
     }
 
     private void handleIncomingMessage(Long chatId, String text, User user) {
+        if (text != null && (text.equalsIgnoreCase("/start") || text.equalsIgnoreCase("/menu"))) {
+            sendReplyKeyboard(chatId);
+        }
         SimulationResponse resp = processAction(user, text, null);
         sendTextMessage(chatId, resp.replyText(), resp.inlineButtons());
     }
 
     private void handleCallbackQuery(Long chatId, String callbackData, User user) {
+        if (callbackData != null && (callbackData.contains("Audio") || callbackData.contains("Слушать") || callbackData.equalsIgnoreCase("AUDIO_LIB"))) {
+            sendWordAudio(chatId, user);
+        }
         SimulationResponse resp = processAction(user, callbackData, null);
         sendTextMessage(chatId, resp.replyText(), resp.inlineButtons());
+    }
+
+    private void sendReplyKeyboard(Long chatId) {
+        SendMessage sm = new SendMessage();
+        sm.setChatId(chatId.toString());
+        sm.setText("📱 Навигация активирована. Кнопка «☰ Menu» всегда доступна внизу экрана.");
+        ReplyKeyboardMarkup rk = new ReplyKeyboardMarkup();
+        rk.setResizeKeyboard(true);
+        rk.setSelective(false);
+        List<KeyboardRow> rows = new ArrayList<>();
+        KeyboardRow row = new KeyboardRow();
+        row.add("☰ Menu");
+        rows.add(row);
+        rk.setKeyboard(rows);
+        sm.setReplyMarkup(rk);
+        try { execute(sm); } catch (Exception ignored) {}
+    }
+
+    private void sendWordAudio(Long chatId, User user) {
+        try {
+            LearningFlowService.WordCardDto card = learningFlowService.resume(user.getId());
+            byte[] wavBytes = ttsAudioService.synthesizeAudio(card.wordTarget(), user.getTargetLanguage());
+            if (wavBytes != null && wavBytes.length > 0) {
+                org.telegram.telegrambots.meta.api.methods.send.SendAudio sendAudio = new org.telegram.telegrambots.meta.api.methods.send.SendAudio();
+                sendAudio.setChatId(chatId.toString());
+                sendAudio.setAudio(new org.telegram.telegrambots.meta.api.objects.InputFile(new java.io.ByteArrayInputStream(wavBytes), card.wordTarget() + ".wav"));
+                sendAudio.setTitle(card.wordTarget() + " (" + user.getTargetLanguage() + ")");
+                sendAudio.setPerformer("Google WaveNet TTS");
+                execute(sendAudio);
+            }
+        } catch (Exception e) {
+            log.warn("Could not send audio to Telegram: {}", e.getMessage());
+        }
     }
 
     public SimulationResponse processAction(User user, String text, String extra) {
