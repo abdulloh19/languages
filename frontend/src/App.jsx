@@ -1,187 +1,362 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Users, BookOpen, Volume2, Sparkles, Activity, ShieldCheck, Github, ExternalLink } from 'lucide-react';
+import {
+  Sparkles, BookOpen, Volume2, Users, Bot, Flame, Award,
+  CheckCircle2, ChevronRight, Play, Globe, ShieldCheck, Zap
+} from 'lucide-react';
+import SuperAnimatedMenu from './components/SuperAnimatedMenu';
+import WordLearningModal from './components/WordLearningModal';
+import LevelSelectorModal from './components/LevelSelectorModal';
+import AudioVocabularyViewer from './components/AudioVocabularyViewer';
 import StatsHeader from './components/StatsHeader';
 import UserTable from './components/UserTable';
 import NudgeModal from './components/NudgeModal';
 import BotSimulator from './components/BotSimulator';
-import AudioVocabularyViewer from './components/AudioVocabularyViewer';
-
-import SuperAnimatedMenu from './components/SuperAnimatedMenu';
+import { TOPIC_MODULES, CURRICULUM_DAYS } from './data/curriculum20Days';
+import { speechService } from './services/speechService';
 
 export default function App() {
+  // App state
+  const [learningMode, setLearningMode] = useState('UZ_TO_RU'); // 'UZ_TO_RU' or 'UZ_TO_EN'
+  const [currentLevel, setCurrentLevel] = useState('A1'); // 'A1', 'A2', 'B1', 'B2'
+  const [activeDay, setActiveDay] = useState(1); // 1 to 20
+  const [activeWordIndex, setActiveWordIndex] = useState(1); // 1 to 20
+  
+  // Modals state
+  const [studyModalOpen, setStudyModalOpen] = useState(false);
+  const [levelModalOpen, setLevelModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('learn'); // 'learn', 'audio', 'menu', 'admin'
+  const [toastMessage, setToastMessage] = useState(null);
+
+  // Backend sync state
   const [summary, setSummary] = useState(null);
   const [users, setUsers] = useState([]);
-  const [filter, setFilter] = useState('ALL'); // ALL, ACTIVE, INACTIVE
+  const [filter, setFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserForNudge, setSelectedUserForNudge] = useState(null);
   const [simulatorUser, setSimulatorUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('menu'); // 'menu', 'dashboard', 'simulator', 'vocabulary'
-  const [loading, setLoading] = useState(true);
-  const [toastMessage, setToastMessage] = useState(null);
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const loadData = async () => {
-    try {
-      const [sumRes, usersRes] = await Promise.all([
-        fetch('/api/dashboard/summary'),
-        fetch(`/api/dashboard/users?status=${filter}&search=${encodeURIComponent(searchQuery)}`)
-      ]);
-
-      if (sumRes.ok) {
-        const sumData = await sumRes.json();
-        setSummary(sumData);
-      }
-      if (usersRes.ok) {
-        const usersData = await usersRes.json();
-        setUsers(usersData);
-        if (!simulatorUser && usersData.length > 0) {
-          setSimulatorUser(usersData[0]);
-        }
-      }
-    } catch (e) {
-      console.error('Failed to fetch dashboard data', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Load backend data
   useEffect(() => {
-    loadData();
+    fetch('/api/dashboard/summary')
+      .then(r => r.json())
+      .then(d => setSummary(d))
+      .catch(() => {});
+
+    fetch(`/api/dashboard/users?status=${filter}&search=${encodeURIComponent(searchQuery)}`)
+      .then(r => r.json())
+      .then(data => {
+        setUsers(data);
+        if (data.length > 0 && !simulatorUser) {
+          setSimulatorUser(data[0]);
+        }
+      })
+      .catch(() => {});
   }, [filter, searchQuery]);
 
-  const handleResetProgress = async (userId) => {
-    if (!window.confirm('Reset progress for this learner to Word #1?')) return;
-    try {
-      const res = await fetch(`/api/dashboard/reset/${userId}`, { method: 'POST' });
-      if (res.ok) {
-        showToast('Learner progress successfully reset to Word #1');
-        loadData();
-      }
-    } catch (e) {
-      console.error(e);
+  const handleStartLesson = (dayNum = 1, wordIdx = 1) => {
+    speechService.playTapSound();
+    setActiveDay(dayNum);
+    setActiveWordIndex(wordIdx);
+    setStudyModalOpen(true);
+  };
+
+  const handleToggleLearningMode = (newMode) => {
+    speechService.playTapSound();
+    setLearningMode(newMode);
+    showToast(newMode === 'UZ_TO_RU' ? "Yo'nalish: O'zbekcha ➔ Ruscha tanlandi" : "Yo'nalish: O'zbekcha ➔ Inglizcha tanlandi");
+  };
+
+  const handleMenuAction = (actionKey) => {
+    if (actionKey === 'LEARN_TODAY' || actionKey === 'CONTINUE') {
+      handleStartLesson(activeDay, activeWordIndex);
+    } else if (actionKey === 'CHANGE_LANG') {
+      handleToggleLearningMode(learningMode === 'UZ_TO_RU' ? 'UZ_TO_EN' : 'UZ_TO_RU');
+    } else if (actionKey === 'AUDIO_LIB') {
+      setActiveTab('audio');
+    } else {
+      showToast(`Tanlandi: ${actionKey}`);
     }
   };
 
-  const handleLaunchBotForUser = (user) => {
-    setSimulatorUser(user);
-    setActiveTab('simulator');
-  };
+  const streakDays = simulatorUser?.streakDays || 7;
+  const tokenCount = simulatorUser?.tokenBalance || 25;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      {/* Toast Notification */}
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-sky-500 selection:text-white">
+      
+      {/* Toast message */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 bg-emerald-500 text-slate-950 font-bold px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 text-xs animate-in slide-in-from-top duration-300">
+        <div className="fixed top-4 right-4 z-50 bg-emerald-500 text-slate-950 font-bold px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 text-xs animate-in slide-in-from-top duration-300">
           <ShieldCheck className="w-4 h-4" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Top Navbar */}
-      <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-sky-500/20">
+      {/* TOP RESPONSIVE APP BAR (Clean, Modern, No Overlap) */}
+      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-md border-b border-slate-800/80">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+          
+          {/* Logo & Level Pill */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-black text-white shadow-md shadow-sky-500/25">
               AG
             </div>
             <div>
-              <div className="font-bold text-white text-base tracking-tight flex items-center gap-2">
-                Antigravity Language Learning Platform
+              <div className="font-extrabold text-white text-sm sm:text-base tracking-tight flex items-center gap-1.5">
+                <span>Super Ilova</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               </div>
-              <div className="text-[11px] text-slate-400 font-medium">
-                Telegram Bot + 100-User Dashboard & Psychological Nudge Engine
+              <div className="text-[10px] text-slate-400 font-medium hidden sm:block">
+                O'zbekcha ➔ Ruscha / Inglizcha platforma
               </div>
             </div>
-          </div>
 
-          {/* Navigation Mode Tabs */}
-          <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs font-medium">
+            {/* CEFR Level Selector Pill */}
             <button
-              onClick={() => setActiveTab('menu')}
-              className={`px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-                activeTab === 'menu'
-                  ? 'bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-lg shadow-sky-500/25 font-bold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              onClick={() => setLevelModalOpen(true)}
+              className="ml-1 sm:ml-2 px-2.5 py-1 rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 text-xs font-black text-amber-300 flex items-center gap-1 transition active:scale-95 shadow-sm"
+              title="Darajani almashtirish"
             >
-              <Sparkles className="w-4 h-4 text-amber-300" /> ✨ Super Menu
-            </button>
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-                activeTab === 'dashboard'
-                  ? 'bg-sky-500 text-white shadow-md font-semibold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Users className="w-4 h-4" /> 100 Learners
-            </button>
-            <button
-              onClick={() => setActiveTab('simulator')}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-                activeTab === 'simulator'
-                  ? 'bg-sky-500 text-white shadow-md font-semibold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Bot className="w-4 h-4" /> Bot Simulator
-            </button>
-            <button
-              onClick={() => setActiveTab('vocabulary')}
-              className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-                activeTab === 'vocabulary'
-                  ? 'bg-sky-500 text-white shadow-md font-semibold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Volume2 className="w-4 h-4" /> Audio & Topics
+              <Award className="w-3.5 h-3.5 text-amber-400" />
+              <span>{currentLevel}</span>
             </button>
           </div>
 
-          <div className="hidden md:flex items-center gap-2">
-            <a
-              href="https://t.me/languageForZubayr_bot"
-              target="_blank"
-              rel="noreferrer"
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-600/30 to-indigo-600/30 hover:from-sky-600/50 hover:to-indigo-600/50 text-sky-300 border border-sky-500/30 text-xs font-semibold flex items-center gap-1.5 transition"
-            >
-              <Bot className="w-3.5 h-3.5 text-sky-400" />
-              <span>@languageForZubayr_bot</span>
-            </a>
-            <a
-              href="https://github.com/abdulloh19/languages.git"
-              target="_blank"
-              rel="noreferrer"
-              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-medium flex items-center gap-1.5 transition"
-            >
-              <Github className="w-3.5 h-3.5 text-slate-400" />
-              <span>GitHub</span>
-              <ExternalLink className="w-3 h-3 text-slate-500" />
-            </a>
+          {/* Stats & Direction Switcher */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Streak & Tokens */}
+            <div className="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1 rounded-xl border border-slate-800 text-xs font-bold">
+              <span className="text-amber-400 flex items-center gap-1">
+                <Flame className="w-3.5 h-3.5 fill-amber-400" /> {streakDays}d
+              </span>
+              <span className="text-slate-600">|</span>
+              <span className="text-sky-400">💎 {tokenCount}</span>
+            </div>
+
+            {/* Language Direction Toggle */}
+            <div className="flex items-center bg-slate-900/90 p-0.5 rounded-xl border border-slate-800">
+              <button
+                onClick={() => handleToggleLearningMode('UZ_TO_RU')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-extrabold transition ${
+                  learningMode === 'UZ_TO_RU'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                🇷🇺 RU
+              </button>
+              <button
+                onClick={() => handleToggleLearningMode('UZ_TO_EN')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-extrabold transition ${
+                  learningMode === 'UZ_TO_EN'
+                    ? 'bg-sky-500 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                🇬🇧 EN
+              </button>
+            </div>
           </div>
+        </div>
+
+        {/* Secondary Clean Tab Navigation */}
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 flex items-center gap-2 pb-2 overflow-x-auto text-xs">
+          <button
+            onClick={() => setActiveTab('learn')}
+            className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+              activeTab === 'learn'
+                ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white bg-slate-900/60'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5" /> 20 Kunlik Darslar
+          </button>
+          <button
+            onClick={() => setActiveTab('audio')}
+            className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+              activeTab === 'audio'
+                ? 'bg-sky-500 text-white shadow-md'
+                : 'text-slate-400 hover:text-white bg-slate-900/60'
+            }`}
+          >
+            <Volume2 className="w-3.5 h-3.5" /> Audio Lug'at
+          </button>
+          <button
+            onClick={() => setActiveTab('menu')}
+            className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+              activeTab === 'menu'
+                ? 'bg-sky-500 text-white shadow-md'
+                : 'text-slate-400 hover:text-white bg-slate-900/60'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" /> 12 Portal
+          </button>
+          <button
+            onClick={() => setActiveTab('admin')}
+            className={`px-3 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 ${
+              activeTab === 'admin'
+                ? 'bg-sky-500 text-white shadow-md'
+                : 'text-slate-400 hover:text-white bg-slate-900/60'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" /> Admin Panel
+          </button>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
+      {/* MAIN VIEW CONTENT CONTAINER */}
+      <main className="max-w-6xl mx-auto px-3 sm:px-6 py-6 flex-1 w-full space-y-8">
+        
+        {/* TAB 1: 20 KUNLIK O'QUV DASTURI (Primary Duolingo/Busuu experience) */}
+        {activeTab === 'learn' && (
+          <div className="space-y-8 animate-in fade-in duration-200">
+            
+            {/* HERO STUDY CARD (Single click to open study modal with auto-voice) */}
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900/90 via-sky-950/50 to-purple-950/40 p-6 sm:p-8 border border-sky-500/30 shadow-2xl">
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-2 max-w-xl">
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" /> Kun {activeDay} • 20 Kunlik Reja
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300">
+                      Daraja: {currentLevel}
+                    </span>
+                  </div>
+
+                  <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight">
+                    {learningMode === 'UZ_TO_RU' ? "O'zbekcha ➔ Ruscha" : "O'zbekcha ➔ Inglizcha"} O'rganish
+                  </h1>
+
+                  <p className="text-sm text-slate-300 leading-relaxed">
+                    Har bir yangi so'zga o'tganingizda ovoz <strong>avtomatik tarzda</strong> yangraydi. O'rganish to'g'ridan-to'g'ri maxsus interaktiv modalda amalga oshiriladi.
+                  </p>
+                </div>
+
+                {/* Big Action Button -> Opens WordLearningModal */}
+                <button
+                  onClick={() => handleStartLesson(activeDay, activeWordIndex)}
+                  className="px-8 py-4 rounded-2xl bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 hover:from-sky-400 hover:to-indigo-500 text-white font-black text-base shadow-xl shadow-sky-500/30 transition transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2.5 group whitespace-nowrap"
+                >
+                  <Play className="w-5 h-5 fill-white" />
+                  <span>Darsni Boshlash (Modal)</span>
+                  <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition" />
+                </button>
+              </div>
+            </div>
+
+            {/* 20-DAY THEMATIC ROADMAP GRID */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-black text-white flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-sky-400" />
+                    20 Kunlik O'quv Xaritasi
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    5 ta asosiy hayotiy mavzuga bog'langan kunlik so'zlar va jonli dialoglar
+                  </p>
+                </div>
+              </div>
+
+              {/* Modules List */}
+              <div className="space-y-6">
+                {TOPIC_MODULES.map((topic) => (
+                  <div
+                    key={topic.id}
+                    className="p-5 rounded-3xl bg-slate-900/70 border border-slate-800 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-2xl">{topic.icon}</span>
+                        <div>
+                          <h3 className="text-base font-black text-white">
+                            {topic.titleUz} <span className="text-xs font-normal text-slate-400">({topic.titleRu} / {topic.titleEn})</span>
+                          </h3>
+                          <span className="text-[11px] text-sky-400 font-semibold">
+                            Kunlar: {topic.days.join(', ')}-kunlar
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Day Cards inside this module */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+                      {topic.days.map((dayNum) => {
+                        const dayInfo = CURRICULUM_DAYS[dayNum];
+                        const isActive = activeDay === dayNum;
+
+                        return (
+                          <div
+                            key={dayNum}
+                            onClick={() => handleStartLesson(dayNum, 1)}
+                            className={`p-4 rounded-2xl border transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-2 group ${
+                              isActive
+                                ? 'bg-sky-950/40 border-sky-500 shadow-md shadow-sky-500/20'
+                                : 'bg-slate-900/90 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="px-2.5 py-0.5 rounded-lg text-xs font-extrabold bg-slate-800 text-sky-300">
+                                {dayNum}-Kun
+                              </span>
+                              <span className="text-xs font-bold text-slate-400 group-hover:text-sky-400 transition flex items-center gap-1">
+                                O'rganish ➔
+                              </span>
+                            </div>
+
+                            <div>
+                              <div className="text-sm font-bold text-white group-hover:text-sky-300 transition">
+                                {dayInfo?.topicTitleUz || `Mavzu darsi`}
+                              </div>
+                              <div className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                                Dialog: {dayInfo?.dialogue?.titleUz || 'Mavzuli suhbat'}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* TAB 2: AUDIO LUG'AT */}
+        {activeTab === 'audio' && (
+          <div className="animate-in fade-in duration-200">
+            <AudioVocabularyViewer topics={summary?.topics} />
+          </div>
+        )}
+
+        {/* TAB 3: 12-SECTION SUPER ANIMATED MENU */}
         {activeTab === 'menu' && (
-          <div className="space-y-6 animate-in fade-in duration-300">
+          <div className="animate-in fade-in duration-200">
             <SuperAnimatedMenu
               user={simulatorUser || users[0]}
-              onAction={(actionKey) => {
-                setActiveTab('simulator');
-                showToast(`Portal: Activating [${actionKey}] in Bot Simulator...`);
-              }}
+              onAction={handleMenuAction}
             />
           </div>
         )}
 
-        {activeTab === 'dashboard' && (
+        {/* TAB 4: ADMIN DASHBOARD (Separated cleanly) */}
+        {activeTab === 'admin' && (
           <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-white">Administrator Boshqaruv Paneli</h3>
+                <p className="text-xs text-slate-400">100 ta o'quvchi monitoringi va psixologik eslatmalar</p>
+              </div>
+            </div>
+
             <StatsHeader
               summary={summary}
               filter={filter}
@@ -193,73 +368,57 @@ export default function App() {
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
               onOpenNudge={(u) => setSelectedUserForNudge(u)}
-              onResetProgress={handleResetProgress}
-              onSelectUserForBot={handleLaunchBotForUser}
+              onResetProgress={(uid) => {}}
+              onSelectUserForBot={(u) => { setSimulatorUser(u); }}
             />
-          </div>
-        )}
-
-        {activeTab === 'simulator' && (
-          <div className="animate-in fade-in duration-200 space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-sky-400" />
-                  Live Telegram Bot Simulator
-                </h2>
-                <p className="text-xs text-slate-400">
-                  Simulating interaction for <strong>{simulatorUser?.firstName}</strong> (@{simulatorUser?.username}) — resume point saved word by word.
-                </p>
-              </div>
-
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition"
-              >
-                ← Back to Dashboard
-              </button>
-            </div>
-
-            <BotSimulator
-              activeUser={simulatorUser}
-              allUsers={users}
-              onUserChange={(u) => setSimulatorUser(u)}
-            />
-          </div>
-        )}
-
-        {activeTab === 'vocabulary' && (
-          <div className="animate-in fade-in duration-200 space-y-4">
-            <AudioVocabularyViewer topics={summary?.topics} />
           </div>
         )}
       </main>
 
-      {/* Psychological Nudge Modal */}
+      {/* 1. DEDICATED INTERACTIVE WORD LEARNING MODAL (With Automatic Voice On Next) */}
+      {studyModalOpen && (
+        <WordLearningModal
+          initialDay={activeDay}
+          initialWordIndex={activeWordIndex}
+          learningMode={learningMode}
+          currentLevel={currentLevel}
+          onOpenLevelSelector={() => setLevelModalOpen(true)}
+          onClose={() => setStudyModalOpen(false)}
+          onProgressUpdate={(d, w) => {
+            setActiveDay(d);
+            setActiveWordIndex(w);
+          }}
+        />
+      )}
+
+      {/* 2. CEFR LEVEL SELECTOR MODAL (A1, A2, B1, B2) */}
+      {levelModalOpen && (
+        <LevelSelectorModal
+          currentLevel={currentLevel}
+          onSelectLevel={(lvl) => {
+            setCurrentLevel(lvl);
+            showToast(`Daraja muvaffaqiyatli tanlandi: ${lvl}`);
+          }}
+          onClose={() => setLevelModalOpen(false)}
+        />
+      )}
+
+      {/* Nudge modal for admin */}
       {selectedUserForNudge && (
         <NudgeModal
           user={selectedUserForNudge}
           onClose={() => setSelectedUserForNudge(null)}
           onNudgeSent={() => {
-            showToast(`Psychological push sent to @${selectedUserForNudge.username}!`);
-            loadData();
+            showToast(`Eslatma yuborildi!`);
           }}
         />
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-2">
-          <div>
-            Built with Spring Boot 3.3.4, Telegram Long Polling, PostgreSQL & React + Tailwind
-          </div>
-          <div className="flex items-center gap-4">
-            <span>Daily 09:00 Cron Active</span>
-            <span>•</span>
-            <span>Resume-from-Last-Word Enabled</span>
-            <span>•</span>
-            <span>WaveNet TTS Synthesizer</span>
-          </div>
+      {/* Clean Footer */}
+      <footer className="border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-500">
+        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>@languageForZubayr_bot • Super Ilova 2026</span>
+          <span>Planshet, telefon va kompyuter uchun to'liq moslashgan</span>
         </div>
       </footer>
     </div>
