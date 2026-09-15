@@ -6,6 +6,8 @@ import NudgeModal from './components/NudgeModal';
 import BotSimulator from './components/BotSimulator';
 import AudioVocabularyViewer from './components/AudioVocabularyViewer';
 
+import SuperAnimatedMenu from './components/SuperAnimatedMenu';
+
 export default function App() {
   const [summary, setSummary] = useState(null);
   const [users, setUsers] = useState([]);
@@ -13,7 +15,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserForNudge, setSelectedUserForNudge] = useState(null);
   const [simulatorUser, setSimulatorUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'simulator', 'vocabulary'
+  const [activeTab, setActiveTab] = useState('menu'); // 'menu', 'dashboard', 'simulator', 'vocabulary'
   const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -99,10 +101,20 @@ export default function App() {
           {/* Navigation Mode Tabs */}
           <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs font-medium">
             <button
+              onClick={() => setActiveTab('menu')}
+              className={`px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                activeTab === 'menu'
+                  ? 'bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-lg shadow-sky-500/25 font-bold'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-4 h-4 text-amber-300" /> ✨ Super Menu
+            </button>
+            <button
               onClick={() => setActiveTab('dashboard')}
               className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
                 activeTab === 'dashboard'
-                  ? 'bg-sky-500 text-white shadow-md'
+                  ? 'bg-sky-500 text-white shadow-md font-semibold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -112,7 +124,7 @@ export default function App() {
               onClick={() => setActiveTab('simulator')}
               className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
                 activeTab === 'simulator'
-                  ? 'bg-sky-500 text-white shadow-md'
+                  ? 'bg-sky-500 text-white shadow-md font-semibold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -122,7 +134,7 @@ export default function App() {
               onClick={() => setActiveTab('vocabulary')}
               className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
                 activeTab === 'vocabulary'
-                  ? 'bg-sky-500 text-white shadow-md'
+                  ? 'bg-sky-500 text-white shadow-md font-semibold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -132,13 +144,22 @@ export default function App() {
 
           <div className="hidden md:flex items-center gap-2">
             <a
+              href="https://t.me/languageForZubayr_bot"
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-sky-600/30 to-indigo-600/30 hover:from-sky-600/50 hover:to-indigo-600/50 text-sky-300 border border-sky-500/30 text-xs font-semibold flex items-center gap-1.5 transition"
+            >
+              <Bot className="w-3.5 h-3.5 text-sky-400" />
+              <span>@languageForZubayr_bot</span>
+            </a>
+            <a
               href="https://github.com/abdulloh19/languages.git"
               target="_blank"
               rel="noreferrer"
               className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-medium flex items-center gap-1.5 transition"
             >
               <Github className="w-3.5 h-3.5 text-slate-400" />
-              <span>GitHub Repo</span>
+              <span>GitHub</span>
               <ExternalLink className="w-3 h-3 text-slate-500" />
             </a>
           </div>
@@ -147,6 +168,18 @@ export default function App() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 py-6 flex-1 w-full space-y-6">
+        {activeTab === 'menu' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <SuperAnimatedMenu
+              user={simulatorUser || users[0]}
+              onAction={(actionKey) => {
+                setActiveTab('simulator');
+                showToast(`Portal: Activating [${actionKey}] in Bot Simulator...`);
+              }}
+            />
+          </div>
+        )}
+
         {activeTab === 'dashboard' && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <StatsHeader
