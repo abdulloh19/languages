@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: language-postgres
+    environment:
+      POSTGRES_DB: languages
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: language-bot-app
+    depends_on:
+      - postgres
+    environment:
+      PORT: 8080
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/languages
+      DB_USER: postgres
+      DB_PASSWORD: postgrespassword
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-LanguageLearningMasterBot}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-none}
+      TTS_API_KEY: ${TTS_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-supersecretkeyforlanguagetrackerplatform2026}
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

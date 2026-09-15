@@ -1,0 +1,58 @@
+server:
+  port: ${PORT:8085}
+
+spring:
+  application:
+    name: language-learning-platform
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  jpa:
+    open-in-view: false
+
+telegram:
+  bot:
+    username: ${TELEGRAM_BOT_USERNAME:LanguageLearningMasterBot}
+    token: ${TELEGRAM_BOT_TOKEN:none}
+    enabled: true
+
+app:
+  nudge:
+    cron: ${NUDGE_CRON:0 0 9 * * *} # Daily at 09:00 AM
+  tts:
+    apiKey: ${TTS_API_KEY:}
+  jwt:
+    secret: ${JWT_SECRET:supersecretkeyforlanguagetrackerplatform2026}
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:mem:language_db;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DB_URL:${DATABASE_URL:jdbc:postgresql://localhost:5432/languages}}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USER:${PGUSER:postgres}}
+    password: ${DB_PASSWORD:${PGPASSWORD:postgres}}
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
