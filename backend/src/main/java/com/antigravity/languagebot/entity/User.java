@@ -23,7 +23,7 @@ public class User {
     private String targetLanguage = "EN"; // Default target language
 
     @Column(name = "native_language")
-    private String nativeLanguage = "RU"; // Default native language
+    private String nativeLanguage = "UZ"; // Default native language is Uzbek
 
     @Column(name = "words_learned_ru")
     private int wordsLearnedRu = 0;

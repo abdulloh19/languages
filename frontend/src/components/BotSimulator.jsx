@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bot, Send, Volume2, RotateCcw, Sparkles, UserCheck, MessageSquare, Play, X } from 'lucide-react';
 
+import { speechService } from '../services/speechService';
+
 export default function BotSimulator({ activeUser, allUsers, onUserChange, onClose }) {
   const [messages, setMessages] = useState([]);
   const [inputVal, setInputVal] = useState('');
@@ -61,6 +63,17 @@ export default function BotSimulator({ activeUser, allUsers, onUserChange, onClo
 
   const playAudio = (url) => {
     if (!url) return;
+    try {
+      // If URL has text and lang params, try speechService first for crystal clear quality
+      const parsedUrl = new URL(url, window.location.origin);
+      const text = parsedUrl.searchParams.get('text');
+      const lang = parsedUrl.searchParams.get('lang');
+      if (text) {
+        speechService.speak(text, lang || 'EN');
+        return;
+      }
+    } catch (e) {}
+
     if (audioPlayerRef.current) {
       audioPlayerRef.current.src = url;
       audioPlayerRef.current.play().catch(e => console.log('Audio autoplay prevented:', e));

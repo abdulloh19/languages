@@ -9,14 +9,23 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.send.SendAudio;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.ByteArrayInputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,11 +34,14 @@ public class TelegramBotService extends TelegramLongPollingBot {
 
     private static final Logger log = LoggerFactory.getLogger(TelegramBotService.class);
 
-    @Value("${telegram.bot.username:LanguageLearningMasterBot}")
+    @Value("${telegram.bot.username:languageForZubayr_bot}")
     private String botUsername;
 
     @Value("${telegram.bot.token:none}")
     private String botToken;
+
+    @Value("${telegram.bot.webapp-url:}")
+    private String webAppUrl;
 
     private final UserRepository userRepository;
     private final TopicRepository topicRepository;
@@ -65,6 +77,53 @@ public class TelegramBotService extends TelegramLongPollingBot {
         return botToken;
     }
 
+    public void setWebAppUrl(String url) {
+        this.webAppUrl = url;
+    }
+
+    public String getWebAppUrl() {
+        return webAppUrl;
+    }
+
+    /**
+     * Sets Telegram Chat Menu Button to a Web App button named «Super ilova»
+     * exactly matching the Telegram UI screenshot.
+     */
+    public boolean configureSuperIlovaMenuButton(String appUrl) {
+        if (botToken == null || "none".equalsIgnoreCase(botToken) || appUrl == null || appUrl.isBlank()) {
+            return false;
+        }
+        this.webAppUrl = appUrl;
+        try {
+            String endpoint = "https://api.telegram.org/bot" + botToken + "/setChatMenuButton";
+            String jsonPayload = String.format("""
+                {
+                  "menu_button": {
+                    "type": "web_app",
+                    "text": "Super ilova",
+                    "web_app": {
+                      "url": "%s"
+                    }
+                  }
+                }
+                """, appUrl);
+
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(endpoint))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                    .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            log.info("Telegram setChatMenuButton response: {}", response.body());
+            return response.statusCode() == 200 && response.body().contains("\"ok\":true");
+        } catch (Exception e) {
+            log.error("Failed to set Telegram ChatMenuButton: {}", e.getMessage());
+            return false;
+        }
+    }
+
     public record SimulationResponse(
             String replyText,
             List<List<String>> inlineButtons,
@@ -75,7 +134,7 @@ public class TelegramBotService extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
         if ("none".equalsIgnoreCase(botToken) || botToken.isBlank()) {
-            return; // Token not configured yet; simulator can still be used via REST
+            return;
         }
 
         try {
@@ -102,7 +161,7 @@ public class TelegramBotService extends TelegramLongPollingBot {
     }
 
     /**
-     * Simulator method for React Dashboard testing and headless testing
+     * Simulator method for React Dashboard testing
      */
     public SimulationResponse handleSimulatedAction(Long telegramId, String action, String data) {
         User user = learningFlowService.getOrCreateUser(telegramId, "test_user", "Tester");
@@ -118,7 +177,7 @@ public class TelegramBotService extends TelegramLongPollingBot {
     }
 
     private void handleCallbackQuery(Long chatId, String callbackData, User user) {
-        if (callbackData != null && (callbackData.contains("Audio") || callbackData.contains("Слушать") || callbackData.equalsIgnoreCase("AUDIO_LIB"))) {
+        if (callbackData != null && (callbackData.contains("Audio") || callbackData.contains("Tinglash") || callbackData.equalsIgnoreCase("AUDIO_LIB"))) {
             sendWordAudio(chatId, user);
         }
         SimulationResponse resp = processAction(user, callbackData, null);
@@ -128,33 +187,68 @@ public class TelegramBotService extends TelegramLongPollingBot {
     private void sendReplyKeyboard(Long chatId) {
         SendMessage sm = new SendMessage();
         sm.setChatId(chatId.toString());
-        sm.setText("📱 Навигация активирована. Кнопка «☰ Menu» всегда доступна внизу экрана.");
+        sm.setText("🇺🇿 <b>Assalomu alaykum!</b>\n\nPastdagi ko'k <b>«Super ilova»</b> tugmasini bosib, barcha animatsion imkoniyatlarni ochishingiz mumkin!");
+        sm.setParseMode("HTML");
+
         ReplyKeyboardMarkup rk = new ReplyKeyboardMarkup();
         rk.setResizeKeyboard(true);
         rk.setSelective(false);
+
         List<KeyboardRow> rows = new ArrayList<>();
-        KeyboardRow row = new KeyboardRow();
-        row.add("☰ Menu");
-        rows.add(row);
+
+        // Row 1: Super Ilova WebApp Button
+        KeyboardRow row1 = new KeyboardRow();
+        if (webAppUrl != null && !webAppUrl.isBlank()) {
+            KeyboardButton webBtn = new KeyboardButton("🚀 Super ilova");
+            webBtn.setWebApp(new WebAppInfo(webAppUrl));
+            row1.add(webBtn);
+        } else {
+            row1.add("🚀 Super ilova");
+        }
+        rows.add(row1);
+
+        // Row 2: Direction Switchers (UZB -> RU & UZB -> EN)
+        KeyboardRow row2 = new KeyboardRow();
+        row2.add("🇺🇿 ➔ 🇷🇺 Ruscha");
+        row2.add("🇺🇿 ➔ 🇬🇧 Inglizcha");
+        rows.add(row2);
+
+        // Row 3: Daily Learning Flow
+        KeyboardRow row3 = new KeyboardRow();
+        row3.add("📚 Bugungi dars");
+        row3.add("🎯 Davom etish");
+        rows.add(row3);
+
+        // Row 4: Topics, Games, Menu
+        KeyboardRow row4 = new KeyboardRow();
+        row4.add("🗂️ Mavzular");
+        row4.add("🎮 O'yinlar");
+        row4.add("☰ Menyu");
+        rows.add(row4);
+
         rk.setKeyboard(rows);
         sm.setReplyMarkup(rk);
-        try { execute(sm); } catch (Exception ignored) {}
+
+        try {
+            execute(sm);
+        } catch (Exception ignored) {}
     }
 
     private void sendWordAudio(Long chatId, User user) {
         try {
             LearningFlowService.WordCardDto card = learningFlowService.resume(user.getId());
-            byte[] wavBytes = ttsAudioService.synthesizeAudio(card.wordTarget(), user.getTargetLanguage());
-            if (wavBytes != null && wavBytes.length > 0) {
-                org.telegram.telegrambots.meta.api.methods.send.SendAudio sendAudio = new org.telegram.telegrambots.meta.api.methods.send.SendAudio();
+            byte[] mp3Bytes = ttsAudioService.synthesizeAudio(card.wordTarget(), user.getTargetLanguage());
+            if (mp3Bytes != null && mp3Bytes.length > 500) {
+                SendAudio sendAudio = new SendAudio();
                 sendAudio.setChatId(chatId.toString());
-                sendAudio.setAudio(new org.telegram.telegrambots.meta.api.objects.InputFile(new java.io.ByteArrayInputStream(wavBytes), card.wordTarget() + ".wav"));
-                sendAudio.setTitle(card.wordTarget() + " (" + user.getTargetLanguage() + ")");
-                sendAudio.setPerformer("Google WaveNet TTS");
+                sendAudio.setAudio(new InputFile(new ByteArrayInputStream(mp3Bytes), card.wordTarget() + ".mp3"));
+                String langLabel = "RU".equalsIgnoreCase(user.getTargetLanguage()) ? "Ruscha (Google HD Voice)" : "English (Google HD Voice)";
+                sendAudio.setTitle(card.wordTarget() + " — " + card.wordUz());
+                sendAudio.setPerformer(langLabel);
                 execute(sendAudio);
             }
         } catch (Exception e) {
-            log.warn("Could not send audio to Telegram: {}", e.getMessage());
+            log.warn("Could not send audio note to Telegram: {}", e.getMessage());
         }
     }
 
@@ -163,46 +257,71 @@ public class TelegramBotService extends TelegramLongPollingBot {
 
         // 1. Navigation to Super Menu
         if (clean.equalsIgnoreCase("/start") || clean.equalsIgnoreCase("/menu")
-                || clean.equalsIgnoreCase("☰ Menu") || clean.equalsIgnoreCase("⬅️ Back to Menu")
-                || clean.equalsIgnoreCase("MENU")) {
+                || clean.equalsIgnoreCase("☰ Menyu") || clean.equalsIgnoreCase("☰ Menu")
+                || clean.equalsIgnoreCase("⬅️ Asosiy menyu") || clean.equalsIgnoreCase("MENU")) {
             return renderSuperMenu(user);
         }
 
-        // 2. Resume / Come Back (Critical requirement)
-        if (clean.equalsIgnoreCase("CONTINUE") || clean.equalsIgnoreCase("🎯 Continue")
-                || clean.equalsIgnoreCase("🌅 Come Back") || clean.equalsIgnoreCase("🌅 Вернуться")
+        // 2. Direct Language Switch: UZB -> RU or UZB -> EN
+        if (clean.equalsIgnoreCase("SET_LANG_RU") || clean.contains("Ruscha") || clean.equalsIgnoreCase("UZB_RU")) {
+            learningFlowService.switchLanguage(user.getId(), "RU");
+            return new SimulationResponse(
+                    "✅ <b>O'rganish yo'nalishi o'zgartirildi:</b>\n\n🇺🇿 ➔ 🇷🇺 <b>O'zbekcha ➔ Ruscha (UZB ➔ RU)</b>\n\nBarcha so'zlar, darslar va xotira o'yinlari endi Rus tilini o'rganishga moslashtirildi.",
+                    List.of(
+                            List.of("📚 Bugungi dars", "🎯 Davom etish"),
+                            List.of("☰ Asosiy menyu")
+                    ),
+                    null,
+                    "LANG_SWITCHED"
+            );
+        }
+
+        if (clean.equalsIgnoreCase("SET_LANG_EN") || clean.contains("Inglizcha") || clean.equalsIgnoreCase("UZB_EN")) {
+            learningFlowService.switchLanguage(user.getId(), "EN");
+            return new SimulationResponse(
+                    "✅ <b>O'rganish yo'nalishi o'zgartirildi:</b>\n\n🇺🇿 ➔ 🇬🇧 <b>O'zbekcha ➔ Inglizcha (UZB ➔ EN)</b>\n\nBarcha so'zlar, darslar va xotira o'yinlari endi Ingliz tilini o'rganishga moslashtirildi.",
+                    List.of(
+                            List.of("📚 Bugungi dars", "🎯 Davom etish"),
+                            List.of("☰ Asosiy menyu")
+                    ),
+                    null,
+                    "LANG_SWITCHED"
+            );
+        }
+
+        // 3. Resume / Come Back (Smart Resume from exact pause point)
+        if (clean.equalsIgnoreCase("CONTINUE") || clean.equalsIgnoreCase("🎯 Davom etish")
+                || clean.equalsIgnoreCase("🎯 Continue") || clean.equalsIgnoreCase("🌅 Qaytish")
                 || clean.equalsIgnoreCase("/resume") || clean.equalsIgnoreCase("YES_RESUME")) {
             var card = learningFlowService.resume(user.getId());
             return renderWordCard(user, card, true);
         }
 
-        // 3. Learn Today (20 words/day flow)
-        if (clean.equalsIgnoreCase("LEARN_TODAY") || clean.equalsIgnoreCase("📚 Learn Today")
-                || clean.equalsIgnoreCase("/learn")) {
+        // 4. Learn Today (20 words/day flow)
+        if (clean.equalsIgnoreCase("LEARN_TODAY") || clean.equalsIgnoreCase("📚 Bugungi dars")
+                || clean.equalsIgnoreCase("📚 Learn Today") || clean.equalsIgnoreCase("/learn")) {
             var card = learningFlowService.resume(user.getId());
             return renderWordCard(user, card, false);
         }
 
-        // 4. Next Word
-        if (clean.equalsIgnoreCase("NEXT_WORD")) {
+        // 5. Next Word
+        if (clean.equalsIgnoreCase("NEXT_WORD") || clean.contains("Keyingi so'z")) {
             var card = learningFlowService.nextWord(user.getId());
             if (card.wordOrder() == 11) {
-                // Transition to Dialogue 1
                 return renderDialogueScreen(user, 1);
             } else if (card.wordOrder() == 1 && user.getCurrentWordIndex() == 1) {
-                // Topic finished -> Dialogue 2 & Reinforcement prompt
                 return renderDialogueScreen(user, 2);
             }
             return renderWordCard(user, card, false);
         }
 
-        // 5. Dialogue Continuation
+        // 6. Dialogue Continuation
         if (clean.startsWith("DIALOGUE_")) {
             int diagOrder = Integer.parseInt(clean.replace("DIALOGUE_", ""));
             return renderDialogueScreen(user, diagOrder);
         }
 
-        // 6. Dialogue Continue? (Confirm before next)
+        // 7. Dialogue Continue? (Confirm before next)
         if (clean.startsWith("CONFIRM_DIALOGUE_")) {
             int nextDiag = Integer.parseInt(clean.replace("CONFIRM_DIALOGUE_", ""));
             if (nextDiag > 5) {
@@ -211,21 +330,21 @@ public class TelegramBotService extends TelegramLongPollingBot {
             return renderDialogueScreen(user, nextDiag);
         }
 
-        // 7. Reinforcement prompt (YES / NO)
-        if (clean.equalsIgnoreCase("REINFORCE_YES")) {
+        // 8. Reinforcement prompt (YES / NO)
+        if (clean.equalsIgnoreCase("REINFORCE_YES") || clean.contains("Mustahkamlash")) {
             return renderGameScreen(user, "FLASHCARD");
         }
         if (clean.equalsIgnoreCase("REINFORCE_NO")) {
             return new SimulationResponse(
-                    "✅ <b>Отличная работа сегодня! / Great work today!</b>\n\nВаш прогресс надёжно сохранён. До встречи завтра!\nYour progress is safely saved. See you tomorrow at 09:00!",
-                    List.of(List.of("☰ Menu")),
+                    "✅ <b>Bugun ajoyib natija ko'rsatdingiz!</b>\n\nSizning natijalaringiz xavfsiz saqlandi. Ertaga soat 09:00 da yangi darsda kutamiz!",
+                    List.of(List.of("☰ Menyu")),
                     null,
                     "SESSION_SAVED"
             );
         }
 
-        // 8. Memory Games
-        if (clean.equalsIgnoreCase("GAMES") || clean.equalsIgnoreCase("🎮 Games")) {
+        // 9. Memory Games
+        if (clean.equalsIgnoreCase("GAMES") || clean.contains("O'yinlar") || clean.contains("Games")) {
             return renderGamesMenu(user);
         }
         if (clean.startsWith("GAME_")) {
@@ -233,8 +352,8 @@ public class TelegramBotService extends TelegramLongPollingBot {
             return renderGameScreen(user, gType);
         }
 
-        // 9. Topics List
-        if (clean.equalsIgnoreCase("TOPICS") || clean.equalsIgnoreCase("🗂️ Topics")) {
+        // 10. Topics List
+        if (clean.equalsIgnoreCase("TOPICS") || clean.contains("Mavzular") || clean.contains("Topics")) {
             return renderTopicsMenu(user);
         }
         if (clean.startsWith("SELECT_TOPIC_")) {
@@ -246,98 +365,93 @@ public class TelegramBotService extends TelegramLongPollingBot {
             return renderWordCard(user, card, false);
         }
 
-        // 10. Language Switch Tracker
-        if (clean.equalsIgnoreCase("CHANGE_LANG") || clean.equalsIgnoreCase("🌐 Change Language")) {
+        // 11. Language Switch Tracker
+        if (clean.equalsIgnoreCase("CHANGE_LANG") || clean.contains("Yo'nalish") || clean.contains("Change Language")) {
             return renderLanguageSwitchMenu(user);
         }
-        if (clean.startsWith("SET_LANG_")) {
-            String newLang = clean.replace("SET_LANG_", "");
-            learningFlowService.switchLanguage(user.getId(), newLang);
-            return renderSuperMenu(user);
-        }
 
-        // 11. My Streak & Stats
-        if (clean.equalsIgnoreCase("MY_STREAK") || clean.equalsIgnoreCase("🔥 My Streak")) {
+        // 12. My Streak & Stats
+        if (clean.equalsIgnoreCase("MY_STREAK") || clean.contains("Seriya") || clean.contains("Streak")) {
             return new SimulationResponse(
                     String.format("""
-                            🔥 <b>ВАША СЕРИЯ / YOUR STREAK</b>
+                            🔥 <b>KUNLIK SERIYA (STREAK)</b>
                             
-                            Текущая серия: <b>%d дней подряд</b>
-                            Лучшая серия: <b>%d дней</b>
+                            Hozirgi seriya: <b>%d kun ketma-ket</b>
+                            Eng yaxshi natija: <b>%d kun</b>
                             
-                            🎯 Цель: 20 слов каждый день!
-                            Продолжайте заниматься каждый день без перерывов.
+                            🎯 Kunlik maqsad: 20 ta so'z!
+                            Har kuni shug'ullanish orqali seriyangizni saqlab qoling.
                             """, user.getStreakDays(), user.getLongestStreak()),
-                    List.of(List.of("🎯 Continue", "⬅️ Back to Menu")),
+                    List.of(List.of("🎯 Davom etish", "☰ Asosiy menyu")),
                     null,
                     "MY_STREAK"
             );
         }
 
-        // 12. Leaderboard
-        if (clean.equalsIgnoreCase("LEADERBOARD") || clean.equalsIgnoreCase("🏆 Leaderboard")) {
+        // 13. Leaderboard
+        if (clean.equalsIgnoreCase("LEADERBOARD") || clean.contains("Peshqadamlar") || clean.contains("Leaderboard")) {
             return new SimulationResponse(
                     superMenuService.renderLeaderboardText(),
-                    List.of(List.of("⬅️ Back to Menu")),
+                    List.of(List.of("☰ Asosiy menyu")),
                     null,
                     "LEADERBOARD"
             );
         }
 
-        // 13. Daily Bonus
-        if (clean.equalsIgnoreCase("DAILY_BONUS") || clean.equalsIgnoreCase("🎁 Daily Bonus")) {
+        // 14. Daily Bonus
+        if (clean.equalsIgnoreCase("DAILY_BONUS") || clean.contains("Bonus")) {
             user.setTokenBalance(user.getTokenBalance() + 5);
             userRepository.save(user);
             return new SimulationResponse(
-                    "🎁 <b>Ежедневный бонус получен! / Daily Bonus Claimed!</b>\n\nВам начислено +5 токенов 💎.\nТекущий баланс: <b>" + user.getTokenBalance() + "</b> токенов.",
-                    List.of(List.of("📚 Learn Today", "⬅️ Back to Menu")),
+                    "🎁 <b>Kunlik bonus muvaffaqiyatli olindi!</b>\n\nSizga +5 ta token 💎 berildi.\nJoriy hisobingiz: <b>" + user.getTokenBalance() + "</b> token.",
+                    List.of(List.of("📚 Bugungi dars", "☰ Asosiy menyu")),
                     null,
                     "DAILY_BONUS"
             );
         }
 
-        // 14. Audio Library
-        if (clean.equalsIgnoreCase("AUDIO_LIB") || clean.equalsIgnoreCase("🔊 Audio Library")) {
+        // 15. Audio Library
+        if (clean.equalsIgnoreCase("AUDIO_LIB") || clean.contains("Lug'at") || clean.contains("Audio")) {
             return new SimulationResponse(
                     """
-                    🔊 <b>АУДИО БИБЛИОТЕКА / AUDIO LIBRARY</b>
+                    🔊 <b>AUDIO LUG'AT & TALAFFUZ</b>
                     
-                    Все слова и диалоги озвучены на трёх языках:
-                    • 🇷🇺 Русский (Google WaveNet)
-                    • 🇬🇧 English (Native Acoustic Synthesis)
-                    • 🇺🇿 O'zbekcha (Tabiiy talaffuz)
+                    Barcha so'z va dialoglar sof inson ovozida (Google HD Voice):
+                    • 🇷🇺 Ruscha talaffuz
+                    • 🇬🇧 Inglizcha talaffuz
+                    • 🇺🇿 O'zbekcha tarjimasi
                     
-                    Аудио воспроизводится автоматически на каждой карточке слова.
+                    Har bir so'z kartochkasidagi «🔊 Tinglash» tugmasini bosing!
                     """,
-                    List.of(List.of("📚 Learn Today", "⬅️ Back to Menu")),
+                    List.of(List.of("📚 Bugungi dars", "☰ Asosiy menyu")),
                     null,
                     "AUDIO_LIB"
             );
         }
 
-        // 15. Settings & Help
-        if (clean.equalsIgnoreCase("SETTINGS") || clean.equalsIgnoreCase("⚙️ Settings")) {
+        // 16. Settings & Help
+        if (clean.equalsIgnoreCase("SETTINGS") || clean.contains("Sozlamalar")) {
+            String dir = "RU".equalsIgnoreCase(user.getTargetLanguage()) ? "🇺🇿 ➔ 🇷🇺 Ruscha" : "🇺🇿 ➔ 🇬🇧 Inglizcha";
             return new SimulationResponse(
-                    "⚙️ <b>НАСТРОЙКИ / SETTINGS</b>\n\n• Уведомления: <b>09:00 Вкл</b>\n• Дневная норма: <b>20 слов</b>\n• Целевой язык: <b>" + user.getTargetLanguage() + "</b>",
-                    List.of(List.of("🌐 Change Language", "⬅️ Back to Menu")),
+                    "⚙️ <b>SOZLAMALAR</b>\n\n• Eslatmalar: <b>09:00 Faol</b>\n• Kunlik me'yor: <b>20 ta so'z</b>\n• O'rganish yo'nalishi: <b>" + dir + "</b>",
+                    List.of(List.of("🌐 Yo'nalishni almashtirish", "☰ Asosiy menyu")),
                     null,
                     "SETTINGS"
             );
         }
 
-        if (clean.equalsIgnoreCase("HELP") || clean.equalsIgnoreCase("❓ Help")) {
+        if (clean.equalsIgnoreCase("HELP") || clean.contains("Yordam")) {
             return new SimulationResponse(
                     """
-                    ❓ <b>СПРАВКА / HELP</b>
+                    ❓ <b>QO'LLANMA VA YORDAM</b>
                     
-                    Добро пожаловать в платформу изучения языков!
-                    • <b>20 слов в день:</b> 10 слов ➔ Диалог ➔ 10 слов ➔ Закрепление.
-                    • <b>Возобновление:</b> Мы никогда не начинаем с нуля — вы продолжите ровно с того слова, где остановились.
-                    • <b>Игры:</b> 5 интерактивных игр для тренировки памяти.
-                    
-                    Нажмите «☰ Menu», чтобы открыть главное меню в любой момент.
+                    Xush kelibsiz! Platforma imkoniyatlari:
+                    • <b>20 so'z/kun:</b> 10 so'z ➔ Dialog ➔ 10 so'z ➔ Mustahkamlash.
+                    • <b>Aqlli davom etish:</b> Darslar hech qachon noldan boshlanmaydi.
+                    • <b>Haqiqiy audio:</b> Har bir so'zning sof insoniy talaffuzi.
+                    • <b>Super ilova:</b> Pastdagi ko'k tugma orqali to'liq animatsion Mini App!
                     """,
-                    List.of(List.of("☰ Menu")),
+                    List.of(List.of("☰ Menyu")),
                     null,
                     "HELP"
             );
@@ -351,51 +465,52 @@ public class TelegramBotService extends TelegramLongPollingBot {
         String text = superMenuService.renderMenuText(user);
         List<List<String>> buttons = new ArrayList<>();
 
-        if (user.getDaysInactive() >= 1) {
-            buttons.add(List.of("🌅 Come Back", "🎯 Continue"));
-        } else {
-            buttons.add(List.of("📚 Learn Today", "🎯 Continue"));
-        }
-        buttons.add(List.of("🗂️ Topics", "🎮 Games"));
-        buttons.add(List.of("🔊 Audio Library", "📊 Progress"));
-        buttons.add(List.of("🌐 Change Language", "🔥 My Streak"));
-        buttons.add(List.of("🏆 Leaderboard", "🎁 Daily Bonus"));
-        buttons.add(List.of("⚙️ Settings", "❓ Help"));
+        buttons.add(List.of("🇺🇿 ➔ 🇷🇺 Ruscha", "🇺🇿 ➔ 🇬🇧 Inglizcha"));
+        buttons.add(List.of("📚 Bugungi dars", "🎯 Davom etish"));
+        buttons.add(List.of("🗂️ Mavzular", "🎮 O'yinlar"));
+        buttons.add(List.of("🔊 Audio Lug'at", "📊 Natijam"));
+        buttons.add(List.of("🔥 Seriya", "🏆 Peshqadamlar"));
+        buttons.add(List.of("🎁 Bonus", "⚙️ Sozlamalar"));
 
         return new SimulationResponse(text, buttons, null, "SUPER_MENU");
     }
 
     private SimulationResponse renderWordCard(User user, LearningFlowService.WordCardDto card, boolean isResume) {
+        boolean isRu = "RU".equalsIgnoreCase(user.getTargetLanguage());
+        String dirTitle = isRu ? "🇺🇿 ➔ 🇷🇺 O'zbekcha ➔ Ruscha" : "🇺🇿 ➔ 🇬🇧 O'zbekcha ➔ Inglizcha";
+        String flag = isRu ? "🇷🇺" : "🇬🇧";
+        String langName = isRu ? "Ruscha" : "Inglizcha";
+
         String header = isResume
-                ? "🎯 <b>ВОЗОБНОВЛЕНИЕ С МЕСТА ПАУЗЫ / RESUME POINT</b>\n\n"
-                : "📚 <b>ДНЕВНОЙ УРОК / DAILY LESSON</b>\n\n";
+                ? "🎯 <b>TO'XTAGAN JOYDAN DAVOM ETISH</b>\n\n"
+                : "📚 <b>BUGUNGI DARS</b>\n\n";
 
         String text = String.format("""
-                %sТема: <b>%s</b> | Слово <b>%d / 20</b>
+                %sYo'nalish: <b>%s</b>
+                Mavzu: <b>%s</b> | So'z: <b>%d / 20</b>
                 
-                🎯 <b>%s</b>
-                🗣️ Транскрипция: <code>%s</code>
-                🇷🇺 Перевод: <b>%s</b>
                 🇺🇿 O'zbekcha: <b>%s</b>
+                %s %s: <b>%s</b>
+                🗣️ Talaffuz: <code>%s</code>
                 
-                📝 <i>Пример / Example:</i>
+                📝 <i>Misol:</i>
                 • %s
                 • %s
                 """,
                 header,
+                dirTitle,
                 card.topicTitle(),
                 card.progressOutOf20(),
-                card.wordTarget(),
-                card.phonetic(),
-                card.wordNative(),
                 card.wordUz(),
+                flag, langName, card.wordTarget(),
+                card.phonetic(),
                 card.exampleTarget(),
                 card.exampleNative()
         );
 
         List<List<String>> buttons = List.of(
-                List.of("🔊 Слушать / Audio", "➡️ Следующее слово / Next"),
-                List.of("⬅️ Back to Menu")
+                List.of("🔊 Tinglash / Audio", "➡️ Keyingi so'z"),
+                List.of("☰ Asosiy menyu")
         );
 
         return new SimulationResponse(text, buttons, card.audioUrl(), "WORD_CARD");
@@ -404,13 +519,13 @@ public class TelegramBotService extends TelegramLongPollingBot {
     private SimulationResponse renderDialogueScreen(User user, int dialogueOrder) {
         var diag = learningFlowService.getDialogue(user.getId(), dialogueOrder);
         String text = String.format("""
-                💬 <b>ДИАЛОГ / DIALOGUE (%d / 5)</b>
-                Тема: <b>%s</b> — <i>%s</i>
+                💬 <b>DIALOG (%d / 5)</b>
+                Mavzu: <b>%s</b> — <i>%s</i>
                 
                 %s
                 
                 ──────────────────
-                <b>Продолжить? / Continue?</b>
+                <b>Davom ettirasizmi?</b>
                 """,
                 diag.dialogueNumber(),
                 diag.topicTitle(),
@@ -419,8 +534,8 @@ public class TelegramBotService extends TelegramLongPollingBot {
         );
 
         List<List<String>> buttons = List.of(
-                List.of("➡️ Да, продолжить / Continue", "📚 К словам / Back to Words"),
-                List.of("⬅️ Back to Menu")
+                List.of("➡️ Ha, davom etish", "📚 So'zlarga qaytish"),
+                List.of("☰ Asosiy menyu")
         );
 
         return new SimulationResponse(text, buttons, null, "DIALOGUE");
@@ -428,16 +543,16 @@ public class TelegramBotService extends TelegramLongPollingBot {
 
     private SimulationResponse renderReinforcementPrompt(User user) {
         String text = """
-                🎉 <b>20 слов и диалоги успешно пройдены!</b>
+                🎉 <b>20 ta so'z va dialoglar muvaffaqiyatli yakunlandi!</b>
                 
-                🧠 <b>Закрепим слова в интерактивной игре? / Reinforce these words?</b>
+                🧠 <b>O'rganilgan so'zlarni interaktiv o'yinda mustahkamlaymizmi?</b>
                 
-                Регулярное повторение увеличивает запоминание на 85% согласно кривой Эббингауза!
+                O'yin orqali takrorlash so'zlarni 85% ko'proq uzoq muddatli xotiraga muhrlaydi!
                 """;
 
         List<List<String>> buttons = List.of(
-                List.of("✅ ДА, закрепить! / YES, reinforce", "❌ Нет, завершить / NO, finish"),
-                List.of("⬅️ Back to Menu")
+                List.of("✅ Ha, mustahkamlash!", "❌ Yo'q, yakunlash"),
+                List.of("☰ Asosiy menyu")
         );
 
         return new SimulationResponse(text, buttons, null, "REINFORCE_PROMPT");
@@ -445,16 +560,16 @@ public class TelegramBotService extends TelegramLongPollingBot {
 
     private SimulationResponse renderGamesMenu(User user) {
         String text = """
-                🎮 <b>ТРЕНИРОВКА ПАМЯТИ / MEMORY GAMES</b>
+                🎮 <b>XOTIRA O'YINLARI</b>
                 
-                Выберите режим игры для закрепления выученных слов:
+                So'zlarni yodlash uchun o'yin rejimini tanlang:
                 """;
 
         List<List<String>> buttons = List.of(
                 List.of("🎴 Flashcard Match", "🧠 Word Recall (3s)"),
-                List.of("🔗 Word → Translation", "🎧 Listen & Choose"),
-                List.of("✍️ Fill the Gap"),
-                List.of("⬅️ Back to Menu")
+                List.of("🔗 So'z ➔ Tarjima", "🎧 Eshitib top"),
+                List.of("✍️ Bo'sh joyni to'ldir"),
+                List.of("☰ Asosiy menyu")
         );
 
         return new SimulationResponse(text, buttons, null, "GAMES_MENU");
@@ -464,9 +579,9 @@ public class TelegramBotService extends TelegramLongPollingBot {
         var q = gameService.generateGameQuestion(user.getCurrentTopicId(), gameType, user.getTargetLanguage());
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("🎮 <b>%s</b>\n\n", q.questionTitleRu()));
-        sb.append(String.format("Слово: <b>%s</b>\n", q.targetWord()));
+        sb.append(String.format("So'z: <b>%s</b>\n", q.targetWord()));
         if (q.gapSentence() != null) {
-            sb.append(String.format("Предложение: <i>%s</i>\n", q.gapSentence()));
+            sb.append(String.format("Jumla: <i>%s</i>\n", q.gapSentence()));
         }
         sb.append(String.format("\n💡 <i>%s</i>\n", q.hint()));
 
@@ -479,21 +594,21 @@ public class TelegramBotService extends TelegramLongPollingBot {
         }
         buttons.add(row1);
         if (!row2.isEmpty()) buttons.add(row2);
-        buttons.add(List.of("🎲 Другая игра / Next Game", "⬅️ Back to Menu"));
+        buttons.add(List.of("🎲 Boshqa o'yin", "☰ Asosiy menyu"));
 
         return new SimulationResponse(sb.toString(), buttons, q.audioUrl(), "GAME_ACTIVE");
     }
 
     private SimulationResponse renderTopicsMenu(User user) {
         List<Topic> topics = topicRepository.findAllByOrderByDisplayOrderAsc();
-        StringBuilder sb = new StringBuilder("🗂️ <b>5 ТЕМАТИЧЕСКИХ МОДУЛЕЙ / 5 TOPICS</b>\n\n");
+        StringBuilder sb = new StringBuilder("🗂️ <b>5 TA ASOSIY MAVZU</b>\n\n");
         List<List<String>> buttons = new ArrayList<>();
 
         for (Topic t : topics) {
-            sb.append(String.format("%s <b>%s</b> (%s)\n", t.getIcon(), t.getTitleRu(), t.getTitleEn()));
-            buttons.add(List.of(t.getIcon() + " " + t.getTitleEn()));
+            sb.append(String.format("%s <b>%s</b> (%s)\n", t.getIcon(), t.getTitleUz(), t.getTitleRu()));
+            buttons.add(List.of(t.getIcon() + " " + t.getTitleUz()));
         }
-        buttons.add(List.of("⬅️ Back to Menu"));
+        buttons.add(List.of("☰ Asosiy menyu"));
 
         return new SimulationResponse(sb.toString(), buttons, null, "TOPICS_MENU");
     }
@@ -501,8 +616,8 @@ public class TelegramBotService extends TelegramLongPollingBot {
     private SimulationResponse renderLanguageSwitchMenu(User user) {
         String text = superMenuService.renderLanguageSwitchText(user);
         List<List<String>> buttons = List.of(
-                List.of("🇷🇺 Русский", "🇬🇧 English", "🇺🇿 O'zbek"),
-                List.of("⬅️ Back to Menu")
+                List.of("🇺🇿 ➔ 🇷🇺 Ruscha", "🇺🇿 ➔ 🇬🇧 Inglizcha"),
+                List.of("☰ Asosiy menyu")
         );
         return new SimulationResponse(text, buttons, null, "LANGUAGE_SWITCH");
     }
@@ -516,6 +631,17 @@ public class TelegramBotService extends TelegramLongPollingBot {
         if (buttonRows != null && !buttonRows.isEmpty()) {
             InlineKeyboardMarkup markup = new InlineKeyboardMarkup();
             List<List<InlineKeyboardButton>> keyboard = new ArrayList<>();
+
+            // If webAppUrl is set, optionally prepend a Super Ilova button row
+            if (webAppUrl != null && !webAppUrl.isBlank() && text.contains("SUPER ILOVA")) {
+                List<InlineKeyboardButton> webRow = new ArrayList<>();
+                InlineKeyboardButton webBtn = new InlineKeyboardButton();
+                webBtn.setText("🚀 Super ilova ochish");
+                webBtn.setWebApp(new WebAppInfo(webAppUrl));
+                webRow.add(webBtn);
+                keyboard.add(webRow);
+            }
+
             for (List<String> row : buttonRows) {
                 List<InlineKeyboardButton> btnRow = new ArrayList<>();
                 for (String label : row) {
@@ -538,25 +664,23 @@ public class TelegramBotService extends TelegramLongPollingBot {
     }
 
     private String toCallback(String label) {
-        if (label.contains("Learn Today") || label.contains("Учить сегодня")) return "LEARN_TODAY";
-        if (label.contains("Continue") || label.contains("Продолжить")) return "CONTINUE";
-        if (label.contains("Come Back") || label.contains("Вернуться")) return "CONTINUE";
-        if (label.contains("Next") || label.contains("Следующее")) return "NEXT_WORD";
-        if (label.contains("Back to Menu") || label.contains("Menu")) return "MENU";
-        if (label.contains("Topics") || label.contains("Темы")) return "TOPICS";
-        if (label.contains("Games") || label.contains("Игры")) return "GAMES";
-        if (label.contains("Change Language") || label.contains("Сменить язык")) return "CHANGE_LANG";
-        if (label.contains("My Streak") || label.contains("Серия")) return "MY_STREAK";
-        if (label.contains("Leaderboard") || label.contains("Лидеры")) return "LEADERBOARD";
-        if (label.contains("Daily Bonus") || label.contains("Бонус")) return "DAILY_BONUS";
-        if (label.contains("Settings") || label.contains("Настройки")) return "SETTINGS";
-        if (label.contains("Help") || label.contains("Помощь")) return "HELP";
-        if (label.contains("Audio") || label.contains("Слушать")) return "AUDIO_LIB";
-        if (label.contains("ДА, закрепить") || label.contains("YES, reinforce")) return "REINFORCE_YES";
-        if (label.contains("Нет, завершить") || label.contains("NO, finish")) return "REINFORCE_NO";
-        if (label.contains("Русский")) return "SET_LANG_RU";
-        if (label.contains("English")) return "SET_LANG_EN";
-        if (label.contains("O'zbek")) return "SET_LANG_UZ";
+        if (label.contains("Ruscha")) return "SET_LANG_RU";
+        if (label.contains("Inglizcha")) return "SET_LANG_EN";
+        if (label.contains("Bugungi dars") || label.contains("Learn Today")) return "LEARN_TODAY";
+        if (label.contains("Davom etish") || label.contains("Continue")) return "CONTINUE";
+        if (label.contains("Keyingi so'z") || label.contains("Next")) return "NEXT_WORD";
+        if (label.contains("Asosiy menyu") || label.contains("Menyu") || label.contains("Menu")) return "MENU";
+        if (label.contains("Mavzular") || label.contains("Topics")) return "TOPICS";
+        if (label.contains("O'yinlar") || label.contains("Games")) return "GAMES";
+        if (label.contains("Yo'nalish") || label.contains("Change Language")) return "CHANGE_LANG";
+        if (label.contains("Seriya") || label.contains("Streak")) return "MY_STREAK";
+        if (label.contains("Peshqadamlar") || label.contains("Leaderboard")) return "LEADERBOARD";
+        if (label.contains("Bonus")) return "DAILY_BONUS";
+        if (label.contains("Sozlamalar") || label.contains("Settings")) return "SETTINGS";
+        if (label.contains("Yordam") || label.contains("Help")) return "HELP";
+        if (label.contains("Tinglash") || label.contains("Audio")) return "AUDIO_LIB";
+        if (label.contains("mustahkamlash") || label.contains("YES")) return "REINFORCE_YES";
+        if (label.contains("yakunlash") || label.contains("NO")) return "REINFORCE_NO";
         return label;
     }
 }

@@ -15,81 +15,80 @@ public class SuperMenuService {
         this.userRepository = userRepository;
     }
 
-    public record MenuItem(String id, String labelRu, String labelEn, String icon) {}
+    public record MenuItem(String id, String labelUz, String labelEn, String icon) {}
 
     public static final List<MenuItem> MENU_ITEMS = List.of(
-            new MenuItem("LEARN_TODAY", "Учить сегодня (20 слов)", "Learn Today (20 words)", "📚"),
-            new MenuItem("CONTINUE", "Продолжить (с места паузы)", "Continue (resume from last)", "🎯"),
-            new MenuItem("TOPICS", "Темы (5 тем)", "Topics (5 topics)", "🗂️"),
-            new MenuItem("GAMES", "Игры памяти (5 игр)", "Memory Games (5 games)", "🎮"),
-            new MenuItem("AUDIO_LIB", "Аудио библиотека", "Audio Library", "🔊"),
-            new MenuItem("PROGRESS", "Мой прогресс", "My Progress", "📊"),
-            new MenuItem("CHANGE_LANG", "Сменить язык", "Change Language", "🌐"),
-            new MenuItem("MY_STREAK", "Серия дней", "My Streak", "🔥"),
-            new MenuItem("LEADERBOARD", "Топ-10 лидеров", "Leaderboard (Top 10)", "🏆"),
-            new MenuItem("DAILY_BONUS", "Ежедневный бонус", "Daily Bonus", "🎁"),
-            new MenuItem("SETTINGS", "Настройки", "Settings", "⚙️"),
-            new MenuItem("HELP", "Помощь", "Help", "❓")
+            new MenuItem("LEARN_TODAY", "Bugungi dars (20 so'z)", "Learn Today (20 words)", "📚"),
+            new MenuItem("CONTINUE", "Davom ettirish (to'xtagan joydan)", "Continue (resume from last)", "🎯"),
+            new MenuItem("TOPICS", "5 ta Mavzu", "Topics (5 topics)", "🗂️"),
+            new MenuItem("GAMES", "Xotira o'yinlari (5 ta)", "Memory Games (5 games)", "🎮"),
+            new MenuItem("AUDIO_LIB", "Audio Lug'at & Talaffuz", "Audio Library", "🔊"),
+            new MenuItem("PROGRESS", "Mening natijam", "My Progress", "📊"),
+            new MenuItem("CHANGE_LANG", "Yo'nalishni almashtirish", "Change Language", "🌐"),
+            new MenuItem("MY_STREAK", "Kunlik seriya (Streak)", "My Streak", "🔥"),
+            new MenuItem("LEADERBOARD", "Peshqadamlar (Top 10)", "Leaderboard (Top 10)", "🏆"),
+            new MenuItem("DAILY_BONUS", "Kunlik bonus", "Daily Bonus", "🎁"),
+            new MenuItem("SETTINGS", "Sozlamalar", "Settings", "⚙️"),
+            new MenuItem("HELP", "Yordam", "Help", "❓")
     );
 
     public String renderMenuText(User user) {
-        boolean isRu = "RU".equalsIgnoreCase(user.getTargetLanguage()) || "RU".equalsIgnoreCase(user.getNativeLanguage());
-        long daysInactive = user.getDaysInactive();
+        String directionText = "RU".equalsIgnoreCase(user.getTargetLanguage())
+                ? "🇺🇿 ➔ 🇷🇺 <b>O'zbekcha ➔ Ruscha (UZB ➔ RU)</b>"
+                : "🇺🇿 ➔ 🇬🇧 <b>O'zbekcha ➔ Inglizcha (UZB ➔ EN)</b>";
 
         StringBuilder sb = new StringBuilder();
-        if (daysInactive >= 1) {
-            sb.append(isRu
-                    ? "🌅 <b>С возвращением!</b> Нажмите <b>«🌅 Вернуться»</b> или <b>«🎯 Продолжить»</b>, чтобы возобновить урок.\n\n"
-                    : "🌅 <b>Welcome Back!</b> Tap <b>\"🌅 Come Back\"</b> or <b>\"🎯 Continue\"</b> to resume your lesson.\n\n");
+        if (user.getDaysInactive() >= 1) {
+            sb.append("🌅 <b>Qaytganingiz bilan!</b> To'xtagan joyingizdan davom etish uchun <b>«🎯 Davom etish»</b> tugmasini bosing.\n\n");
         }
 
-        sb.append(isRu ? "🌟 <b>СУПЕР МЕНЮ ОБУЧЕНИЯ</b>\n" : "🌟 <b>SUPER LEARNING HUB</b>\n");
-        sb.append(isRu
-                ? "Выберите нужный раздел или введите команду:\n\n"
-                : "Select a module or enter a command:\n\n");
-
-        sb.append(String.format("🔥 Серия / Streak: %d дн. | 💎 Токены: %d\n", user.getStreakDays(), user.getTokenBalance()));
-        sb.append(String.format("🇷🇺 RU: %d слов | 🇬🇧 EN: %d слов | 🇺🇿 UZ: %d слов\n\n",
-                user.getWordsLearnedRu(), user.getWordsLearnedEn(), user.getWordsLearnedUz()));
+        sb.append("🌟 <b>SUPER ILOVA — ASOSIY MENYU</b>\n\n");
+        sb.append("🎯 Faol yo'nalish: ").append(directionText).append("\n");
+        sb.append(String.format("🔥 Seriya: <b>%d kun</b> | 💎 Tokenlar: <b>%d</b>\n", user.getStreakDays(), user.getTokenBalance()));
+        sb.append(String.format("📊 O'rganilgan: 🇷🇺 RU: <b>%d</b> ta | 🇬🇧 EN: <b>%d</b> ta\n\n",
+                user.getWordsLearnedRu(), user.getWordsLearnedEn()));
+        sb.append("Pastdagi ko'k <b>«Super ilova»</b> tugmasi orqali to'liq animatsion ilovani ochishingiz mumkin 👇");
 
         return sb.toString();
     }
 
     public String renderLanguageSwitchText(User user) {
+        String currentDir = "RU".equalsIgnoreCase(user.getTargetLanguage())
+                ? "🇺🇿 ➔ 🇷🇺 O'zbekcha ➔ Ruscha"
+                : "🇺🇿 ➔ 🇬🇧 O'zbekcha ➔ Inglizcha";
+
         return String.format("""
-                🌐 <b>СМЕНА ЯЗЫКА / LANGUAGE SWITCH</b>
+                🌐 <b>O'RGANISH YO'NALISHINI TANLASH</b>
                 
-                Текущий целевой язык: <b>%s</b>
+                Hozirgi yo'nalish: <b>%s</b>
                 
-                📊 <b>Счётчик выученных слов:</b>
-                🇷🇺 Russian:  <b>%d</b> слов выучено
-                🇬🇧 English:  <b>%d</b> words memorized
-                🇺🇿 Uzbek:    <b>%d</b> ta so'z yodlandi
+                📊 <b>Yodlangan so'zlar hisobi:</b>
+                🇷🇺 Ruscha:    <b>%d</b> ta so'z
+                🇬🇧 Inglizcha: <b>%d</b> ta so'z
                 
-                Выберите язык для изучения:
+                Qaysi yo'nalishda o'rganishni xohlaysiz?
                 """,
-                user.getTargetLanguage(),
+                currentDir,
                 user.getWordsLearnedRu(),
-                user.getWordsLearnedEn(),
-                user.getWordsLearnedUz()
+                user.getWordsLearnedEn()
         );
     }
 
     public String renderLeaderboardText() {
         List<User> topUsers = userRepository.findTop10ByTotalWordsLearned();
         StringBuilder sb = new StringBuilder();
-        sb.append("🏆 <b>ТОП-10 УЧЕНИКОВ / LEADERBOARD</b>\n\n");
+        sb.append("🏆 <b>PESHQADAMLAR JADVALI (TOP-10)</b>\n\n");
         int rank = 1;
         for (User u : topUsers) {
-            int total = u.getWordsLearnedRu() + u.getWordsLearnedEn() + u.getWordsLearnedUz();
+            int total = u.getWordsLearnedRu() + u.getWordsLearnedEn();
             String medal = switch (rank) {
                 case 1 -> "🥇";
                 case 2 -> "🥈";
                 case 3 -> "🥉";
                 default -> "👤";
             };
-            sb.append(String.format("%s %d. <b>%s</b> — %d слов (🔥 %d дн.)\n",
-                    medal, rank++, (u.getFirstName() != null ? u.getFirstName() : "Learner"), total, u.getStreakDays()));
+            sb.append(String.format("%s %d. <b>%s</b> — %d ta so'z (🔥 %d kun)\n",
+                    medal, rank++, (u.getFirstName() != null ? u.getFirstName() : "O'quvchi"), total, u.getStreakDays()));
         }
         return sb.toString();
     }

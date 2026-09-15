@@ -20,6 +20,9 @@ public class TelegramBotConfig {
     @Value("${telegram.bot.token:none}")
     private String botToken;
 
+    @Value("${telegram.bot.webapp-url:https://olive-women-itch.loca.lt}")
+    private String webAppUrl;
+
     public TelegramBotConfig(TelegramBotService telegramBotService) {
         this.telegramBotService = telegramBotService;
     }
@@ -36,6 +39,11 @@ public class TelegramBotConfig {
             TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
             botsApi.registerBot(telegramBotService);
             log.info("✅ Telegram Bot [@{}] is LIVE and actively polling for messages!", telegramBotService.getBotUsername());
+
+            if (webAppUrl != null && !webAppUrl.isBlank()) {
+                telegramBotService.configureSuperIlovaMenuButton(webAppUrl);
+                log.info("🚀 Telegram Menu Button configured for Web App: {}", webAppUrl);
+            }
         } catch (TelegramApiException e) {
             log.error("❌ Failed to register Telegram bot: {}", e.getMessage(), e);
         }

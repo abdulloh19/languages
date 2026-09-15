@@ -16,18 +16,20 @@ public class TtsApiController {
         this.ttsAudioService = ttsAudioService;
     }
 
-    @GetMapping(value = "/synthesize", produces = {"audio/wav", "audio/mpeg"})
+    @GetMapping(value = "/synthesize", produces = {"audio/mpeg", "audio/wav", "audio/*"})
     public ResponseEntity<byte[]> synthesize(
-            @RequestParam(defaultValue = "Hello") String text,
-            @RequestParam(defaultValue = "EN") String lang) {
+            @RequestParam(defaultValue = "Salom") String text,
+            @RequestParam(defaultValue = "RU") String lang) {
         byte[] audioBytes = ttsAudioService.synthesizeAudio(text, lang);
 
         HttpHeaders headers = new HttpHeaders();
-        // If Google TTS returned MP3 bytes (ID3 header), set audio/mpeg, otherwise audio/wav
-        boolean isMp3 = audioBytes.length >= 3 && audioBytes[0] == 0x49 && audioBytes[1] == 0x44 && audioBytes[2] == 0x33;
-        headers.setContentType(isMp3 ? MediaType.valueOf("audio/mpeg") : MediaType.valueOf("audio/wav"));
+        boolean isWav = audioBytes.length >= 4
+                && audioBytes[0] == 'R' && audioBytes[1] == 'I' && audioBytes[2] == 'F' && audioBytes[3] == 'F';
+
+        headers.setContentType(isWav ? MediaType.valueOf("audio/wav") : MediaType.valueOf("audio/mpeg"));
         headers.setContentLength(audioBytes.length);
-        headers.set("Cache-Control", "public, max-age=86400");
+        headers.set("Cache-Control", "public, max-age=604800, immutable");
+        headers.set("Accept-Ranges", "bytes");
 
         return ResponseEntity.ok().headers(headers).body(audioBytes);
     }
