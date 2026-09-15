@@ -13,7 +13,7 @@ export default function StatsHeader({ summary, filter, setFilter }) {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <span className="px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full bg-sky-500/20 text-sky-400 border border-sky-500/30">
-                100 Concurrent Learners Hub
+                Haqiqiy Foydalanuvchilar Hubi
               </span>
               <span className="px-3 py-1 text-xs font-medium rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> 24/7 Engine Live
@@ -23,7 +23,7 @@ export default function StatsHeader({ summary, filter, setFilter }) {
               AI Language Learning Platform <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-400">UZ ↔ EN ↔ RU</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-2xl">
-              Real-time analytics for 100 learners, automated 09:00 psychological re-entry pushes, 12-section Telegram Super Menu, and adaptive audio pronunciation.
+              Real-time analytics for genuine learners, automated 09:00 psychological re-entry pushes, 12-section Telegram Super Menu, and adaptive audio pronunciation.
             </p>
           </div>
 
@@ -54,7 +54,7 @@ export default function StatsHeader({ summary, filter, setFilter }) {
             <Users className="w-5 h-5 text-sky-400" />
           </div>
           <div className="text-2xl font-bold text-white">{summary.totalUsers}</div>
-          <div className="text-xs text-slate-400 mt-1">100 concurrent profiles</div>
+          <div className="text-xs text-slate-400 mt-1">Real Telegram profiles</div>
         </div>
 
         {/* Active Today */}

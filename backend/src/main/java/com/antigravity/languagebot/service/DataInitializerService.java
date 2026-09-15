@@ -51,11 +51,8 @@ public class DataInitializerService implements CommandLineRunner {
             log.info("Seeding 100 Vocabulary Words across 5 topics...");
             seedWords();
         }
-        if (userRepository.count() < 100) {
-            log.info("Seeding exactly 100 concurrent users for the dashboard analytics...");
-            seedUsers();
-        }
-        log.info("Data initialization complete! Total users: {}, topics: {}, words: {}, dialogues: {}",
+        cleanupFakerUsers();
+        log.info("Data initialization complete! Real users: {}, topics: {}, words: {}, dialogues: {}",
                 userRepository.count(), topicRepository.count(), wordRepository.count(), dialogueRepository.count());
     }
 
@@ -296,60 +293,17 @@ public class DataInitializerService implements CommandLineRunner {
         return list;
     }
 
-    private void seedUsers() {
-        String[] firstNames = {
-                "Azizbek", "Nodira", "Shaxzod", "Dilnoza", "Jasur", "Malika", "Bobur", "Ziyoda", "Umid", "Gulnoza",
-                "Farxod", "Sevara", "Sardor", "Shahnoza", "Alisher", "Madina", "Bekzod", "Dildora", "Rustam", "Rayhon",
-                "Otabek", "Nargiza", "Jamshid", "Zuhra", "Sanjar", "Kamila", "Eldor", "Yulduz", "Timur", "Nilufar",
-                "Mirzo", "Saodat", "Sherzod", "Mohira", "Abror", "Shirin", "Botir", "Dilrabo", "Ilhom", "Shahrizoda",
-                "Davron", "Munisa", "Mansur", "Feruza", "Khurshid", "Gulzoda", "Ravshan", "Laylo", "Javohir", "Zarina",
-                "Anvar", "Shoxida", "Baxrom", "Ozoda", "Sobir", "Barno", "Ulugbek", "Sabina", "Akmal", "Fotima",
-                "Temur", "Zilola", "G'ayrat", "Umida", "Shohruh", "Lobar", "Qodir", "Shoira", "Oybek", "Nafisa",
-                "Sunnat", "Ruxsora", "Muzaffar", "Dilorom", "Shavkat", "Rano", "Farrux", "Gulsanam", "Ibrohim", "Salomat",
-                "Asadbek", "Muhayyo", "Jahongir", "Nodirabegim", "Murod", "Mastura", "Islom", "Sayyora", "Doniyor", "Sitora",
-                "Hamid", "Guzal", "Olim", "Muxlisa", "Erkin", "Xadicha", "Mahmud", "Maftuna", "Abduvosid", "Charos"
-        };
-
-        Random rnd = new Random(42);
-        long currentTelegramId = 100001L;
-
-        for (int i = 0; i < 100; i++) {
-            String firstName = firstNames[i % firstNames.length];
-            String username = firstName.toLowerCase() + (10 + rnd.nextInt(90));
-            long tid = currentTelegramId + i;
-
-            User user = new User(tid, username, firstName);
-            user.setTargetLanguage(rnd.nextBoolean() ? "EN" : "RU");
-            user.setNativeLanguage("UZ");
-
-            // 45 users active (<24h), 55 inactive (1 to 15 days ago)
-            boolean isActive = i < 45;
-            int daysAgo = isActive ? 0 : (1 + rnd.nextInt(14));
-            user.setStatus(isActive ? "ACTIVE" : "INACTIVE");
-            user.setLastActiveAt(LocalDateTime.now().minusDays(daysAgo).minusHours(rnd.nextInt(23)));
-
-            int wordsRu = 10 + rnd.nextInt(90);
-            int wordsEn = 15 + rnd.nextInt(120);
-            int wordsUz = 5 + rnd.nextInt(40);
-            user.setWordsLearnedRu(wordsRu);
-            user.setWordsLearnedEn(wordsEn);
-            user.setWordsLearnedUz(wordsUz);
-
-            int streak = isActive ? (1 + rnd.nextInt(30)) : Math.max(1, rnd.nextInt(10));
-            user.setStreakDays(streak);
-            user.setLongestStreak(Math.max(streak, streak + rnd.nextInt(10)));
-            user.setCurrentTopicId((long) (1 + rnd.nextInt(5)));
-            user.setCurrentWordIndex(1 + rnd.nextInt(20)); // Word #1 to #20 resume point
-            user.setTokenBalance(10 + rnd.nextInt(80));
-
-            User savedUser = userRepository.save(user);
-
-            UserLearningState state = new UserLearningState(savedUser.getId(), savedUser.getCurrentTopicId());
-            state.setCurrentWordIndex(savedUser.getCurrentWordIndex());
-            state.setDialogueIndex(1 + (savedUser.getCurrentWordIndex() / 4));
-            state.setStage(savedUser.getCurrentWordIndex() <= 10 ? "WORDS_PART_1" : "WORDS_PART_2");
-            state.setLastUpdatedAt(savedUser.getLastActiveAt());
-            learningStateRepository.save(state);
+    private void cleanupFakerUsers() {
+        List<User> fakeUsers = userRepository.findAll().stream()
+                .filter(u -> u.getTelegramId() != null && u.getTelegramId() >= 100001L && u.getTelegramId() <= 100100L)
+                .toList();
+        if (!fakeUsers.isEmpty()) {
+            log.info("Removing {} faker users to keep strictly real users...", fakeUsers.size());
+            for (User fu : fakeUsers) {
+                learningStateRepository.findByUserId(fu.getId()).ifPresent(learningStateRepository::delete);
+                userRepository.delete(fu);
+            }
+            log.info("Faker users successfully removed. Only real users remain.");
         }
     }
 }
