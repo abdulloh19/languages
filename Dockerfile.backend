@@ -1,0 +1,26 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY bot_service/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy bot service codebase
+COPY bot_service/ ./
+
+# Create directory for audio caching
+RUN mkdir -p audio_cache
+
+# Expose backend port
+EXPOSE 8085
+
+# Run FastAPI and aiogram Telegram bot
+CMD ["python", "main.py"]

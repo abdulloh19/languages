@@ -13,7 +13,7 @@ telegram:
   bot:
     username: ${TELEGRAM_BOT_USERNAME:languageForZubayr_bot}
     token: ${TELEGRAM_BOT_TOKEN:8808898451:AAEvTPKnGwNhJcatziSJ0YPIaEOVRYdXTFg}
-    webapp-url: ${TELEGRAM_BOT_WEBAPP_URL:https://chubby-suits-post.loca.lt}
+    webapp-url: ${TELEGRAM_BOT_WEBAPP_URL:https://hungry-cars-eat.loca.lt}
     enabled: true
 
 app:

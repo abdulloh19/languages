@@ -58,6 +58,18 @@ public class User {
     @Column(name = "token_balance")
     private int tokenBalance = 10;
 
+    @Column(name = "current_level")
+    private String currentLevel = "Starter"; // Starter, Beginner, Elementary, Pre-Intermediate, Intermediate
+
+    @Column(name = "xp_points")
+    private int xpPoints = 120;
+
+    @Column(name = "study_partner_id")
+    private Long studyPartnerId;
+
+    @Column(name = "study_partner_name")
+    private String studyPartnerName;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -127,6 +139,18 @@ public class User {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public String getCurrentLevel() { return currentLevel; }
+    public void setCurrentLevel(String currentLevel) { this.currentLevel = currentLevel; }
+
+    public int getXpPoints() { return xpPoints; }
+    public void setXpPoints(int xpPoints) { this.xpPoints = xpPoints; }
+
+    public Long getStudyPartnerId() { return studyPartnerId; }
+    public void setStudyPartnerId(Long studyPartnerId) { this.studyPartnerId = studyPartnerId; }
+
+    public String getStudyPartnerName() { return studyPartnerName; }
+    public void setStudyPartnerName(String studyPartnerName) { this.studyPartnerName = studyPartnerName; }
 
     public long getDaysInactive() {
         if (lastActiveAt == null) return 0;

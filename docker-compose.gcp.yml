@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tilsevar-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tilsevar_db}
+      POSTGRES_USER: ${POSTGRES_USER:-tilsevar_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tilsevar_secure_pass_2026}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tilsevar_user} -d ${POSTGRES_DB:-tilsevar_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: tilsevar-backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-tilsevar_user}:${POSTGRES_PASSWORD:-tilsevar_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-tilsevar_db}
+      - BOT_TOKEN=${BOT_TOKEN}
+      - WEBAPP_URL=${WEBAPP_URL}
+      - ADMIN_IDS=${ADMIN_IDS:-}
+      - TTS_LANGS=en,ru
+      - PORT=8085
+    volumes:
+      - audio_cache:/app/audio_cache
+    expose:
+      - "8085"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: tilsevar-frontend
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      - BACKEND_URL=http://backend:8085
+      - PORT=3000
+    expose:
+      - "3000"
+
+  nginx:
+    image: nginx:alpine
+    container_name: tilsevar-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_etc:/etc/letsencrypt
+      - certbot_var:/var/lib/letsencrypt
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  pgdata:
+  audio_cache:
+  certbot_etc:
+  certbot_var:

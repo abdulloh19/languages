@@ -23,17 +23,35 @@ public class DataInitializerService implements CommandLineRunner {
     private final DialogueRepository dialogueRepository;
     private final WordRepository wordRepository;
     private final UserLearningStateRepository learningStateRepository;
+    private final LessonRepository lessonRepository;
+    private final StoryRepository storyRepository;
+    private final StoryPageRepository storyPageRepository;
+    private final TaskItemRepository taskItemRepository;
+    private final DailyChecklistRepository dailyChecklistRepository;
+    private final StudyPartnerRepository studyPartnerRepository;
 
     public DataInitializerService(UserRepository userRepository,
                                   TopicRepository topicRepository,
                                   DialogueRepository dialogueRepository,
                                   WordRepository wordRepository,
-                                  UserLearningStateRepository learningStateRepository) {
+                                  UserLearningStateRepository learningStateRepository,
+                                  LessonRepository lessonRepository,
+                                  StoryRepository storyRepository,
+                                  StoryPageRepository storyPageRepository,
+                                  TaskItemRepository taskItemRepository,
+                                  DailyChecklistRepository dailyChecklistRepository,
+                                  StudyPartnerRepository studyPartnerRepository) {
         this.userRepository = userRepository;
         this.topicRepository = topicRepository;
         this.dialogueRepository = dialogueRepository;
         this.wordRepository = wordRepository;
         this.learningStateRepository = learningStateRepository;
+        this.lessonRepository = lessonRepository;
+        this.storyRepository = storyRepository;
+        this.storyPageRepository = storyPageRepository;
+        this.taskItemRepository = taskItemRepository;
+        this.dailyChecklistRepository = dailyChecklistRepository;
+        this.studyPartnerRepository = studyPartnerRepository;
     }
 
     @Override
@@ -51,9 +69,11 @@ public class DataInitializerService implements CommandLineRunner {
             log.info("Seeding 100 Vocabulary Words across 5 topics...");
             seedWords();
         }
+        seedTilsevarContent();
         cleanupFakerUsers();
-        log.info("Data initialization complete! Real users: {}, topics: {}, words: {}, dialogues: {}",
-                userRepository.count(), topicRepository.count(), wordRepository.count(), dialogueRepository.count());
+        log.info("Data initialization complete! Real users: {}, topics: {}, words: {}, dialogues: {}, lessons: {}, stories: {}, tasks: {}",
+                userRepository.count(), topicRepository.count(), wordRepository.count(), dialogueRepository.count(),
+                lessonRepository.count(), storyRepository.count(), taskItemRepository.count());
     }
 
     private void seedTopics() {
@@ -304,6 +324,166 @@ public class DataInitializerService implements CommandLineRunner {
                 userRepository.delete(fu);
             }
             log.info("Faker users successfully removed. Only real users remain.");
+        }
+    }
+
+    private void seedTilsevarContent() {
+        if (lessonRepository.count() == 0) {
+            log.info("Seeding Tilsevar Lessons across levels...");
+            // Starter
+            lessonRepository.save(new Lesson("Starter", 1, 1, "Alphabet & Greetings", "Salomlashish va Alifbo",
+                    "Ingliz tilida ilk muloqot va to'g'ri salomlashish iboralari.",
+                    "Hello (Salom), Good morning (Xayrli tong), How are you? (Qalaysiz?) kabi iboralar har kuni ishlatiladi.",
+                    "Example: 'Hello! My name is Aziz. Nice to meet you.'", "BookOpen"));
+            lessonRepository.save(new Lesson("Starter", 1, 2, "Personal Pronouns", "Kishilik olmoshlari (I, You, He, She)",
+                    "Odamlar va narsalarni ifodalovchi asosiy olmoshlar.",
+                    "I (Men), You (Siz/Sen), He (U - o'g'il), She (U - qiz), It (U - jonsiz), We (Biz), They (Ular).",
+                    "Example: 'I am from Tashkent. She is my teacher.'", "Users"));
+            lessonRepository.save(new Lesson("Starter", 1, 3, "Verb 'To Be' (am, is, are)", "'To Be' fe'li asoslari",
+                    "Ingliz tilida ega va sifat/otni bog'lovchi asosiy fe'l shakli.",
+                    "I am, You are, He/She/It is, We are, They are. Inkor shakli: not qo'shiladi (I am not, She is not).",
+                    "Example: 'They are very good students.'", "Sparkles"));
+            lessonRepository.save(new Lesson("Starter", 1, 4, "Numbers & Everyday Objects", "Raqamlar va buyumlar",
+                    "1 dan 100 gacha raqamlar va kundalik buyumlar nomlari.",
+                    "Raqamlar: one, two, three... Buyumlar oldidan 'a/an' artikli qo'yiladi: a book, an apple.",
+                    "Example: 'I have three books and an apple.'", "Award"));
+
+            // Beginner
+            lessonRepository.save(new Lesson("Beginner", 2, 1, "Present Simple Tense", "Hozirgi oddiy zamon",
+                    "Doimiy takrorlanadigan ish-harakatlar va faktlar.",
+                    "Ega he/she/it bo'lganda fe'lga -s/-es qo'shimchasi qo'shiladi. Savolda Do/Does yordamchi fe'li ishlatiladi.",
+                    "Example: 'He works at an IT company. Do you study English?'", "Play"));
+            lessonRepository.save(new Lesson("Beginner", 2, 2, "Daily Routines & Habits", "Kun tartibi va odatlar",
+                    "Ertalabdan kechgacha bo'lgan odatiy harakatlarni ifodalash.",
+                    "Wake up, have breakfast, go to work, exercise, go to bed.",
+                    "Example: 'I usually wake up at 7 AM and drink green tea.'", "Flame"));
+            lessonRepository.save(new Lesson("Beginner", 2, 3, "Have / Has Got", "Egalik ifodalash",
+                    "Biror narsaga egalikni bildirish.",
+                    "I/You/We/They have got, He/She/It has got. Inkor: haven't got / hasn't got.",
+                    "Example: 'She has got a new laptop.'", "ShieldCheck"));
+
+            // Elementary
+            lessonRepository.save(new Lesson("Elementary", 3, 1, "Past Simple (Regular verbs)", "O'tgan oddiy zamon (To'g'ri fe'llar)",
+                    "O'tib ketgan aniq vaqtdagi voqealarni bayon qilish.",
+                    "To'g'ri fe'llarga -ed qo'shiladi (work -> worked, play -> played). Savol va inkorda 'did' ishlatiladi.",
+                    "Example: 'Yesterday, I visited my grandparents in Samarkand.'", "Zap"));
+            lessonRepository.save(new Lesson("Elementary", 3, 2, "Past Simple (Irregular verbs)", "Noto'g'ri fe'llar (Irregular verbs)",
+                    "Maxsus o'zgaruvchi fe'llarning 2-shakli.",
+                    "Go -> Went, See -> Saw, Buy -> Bought, Have -> Had.",
+                    "Example: 'We saw an inspiring documentary last night.'", "Globe"));
+            lessonRepository.save(new Lesson("Elementary", 3, 3, "Future Plans with 'Going To'", "Kelasi zamon rejalari",
+                    "Oldindan rejalashtirilgan ish-harakatlar.",
+                    "Formulasi: be (am/is/are) + going to + fe'l.",
+                    "Example: 'I am going to pass IELTS with band 7.5.'", "Award"));
+        }
+
+        if (storyRepository.count() == 0) {
+            log.info("Seeding Tilsevar Graded Stories & Pages...");
+            Story s1 = storyRepository.save(new Story("Starter", "The Lost Kitten", "Yo'qolgan mushukcha",
+                    "https://images.unsplash.com/photo-1543852786-1cf6624b9987?w=600&auto=format&fit=crop&q=80",
+                    "Kichkina qorvoy mushukchaning o'ziga yangi mehrli uy topishi haqidagi samimiy hikoya.", 2, 3));
+            storyPageRepository.save(new StoryPage(s1.getId(), 1,
+                    "One sunny morning, Tom saw a little white kitten near his small garden. It was meowing softly, looking hungry and cold.",
+                    "Quyoshli bir tongda Tom o'zining kichik bog'i yaqinida kichkina oq mushukchani ko'rib qoldi. U och va sovuqda qolib, sekin miyovlar edi.",
+                    "One sunny morning"));
+            storyPageRepository.save(new StoryPage(s1.getId(), 2,
+                    "Tom ran inside and quickly brought a bowl of warm fresh milk. The kitten drank the milk happily and gently began to purr.",
+                    "Tom ichkariga yugurib kirib, bir idish iliq yangi sut olib chiqdi. Mushukcha sutni sevinch bilan ichdi va mayin xurillay boshladi.",
+                    "Tom ran inside"));
+            storyPageRepository.save(new StoryPage(s1.getId(), 3,
+                    "Now, the kitten has a warm comfortable home. Tom named him Snowy, and they became the best loyal friends.",
+                    "Endi mushukchaning issiq va qulay uyi bor. Tom unga Qorvoy deb nom qo'ydi va ular eng sodiq do'st bo'lishdi.",
+                    "Now the kitten has a warm home"));
+
+            Story s2 = storyRepository.save(new Story("Beginner", "First Morning in London", "Londondagi ilk tong",
+                    "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600&auto=format&fit=crop&q=80",
+                    "Azizning Londondagi birinchi kuni, inglizcha qora choy va krussan buyurtma qilishdagi qiziqarli taassurotlari.", 3, 3));
+            storyPageRepository.save(new StoryPage(s2.getId(), 1,
+                    "Aziz woke up early in London. The famous red double-decker buses were already passing smoothly outside his hotel window.",
+                    "Aziz Londonda tongda erta uyg'ondi. Mashhur qizil ikki qavatli avtobuslar mehmonxona derazasi ortidan mayin o'tib ketayotgan edi.",
+                    "Aziz woke up early"));
+            storyPageRepository.save(new StoryPage(s2.getId(), 2,
+                    "He stepped into a cozy street bakery. He smiled and said: 'Good morning! One hot English tea and a fresh croissant, please.'",
+                    "U shinam novvoyxona qahvaxonasiga kirdi. Jilmayib dedi: 'Xayrli tong! Bitta issiq ingliz choyi va yangi pishgan krussan bering, iltimos.'",
+                    "He stepped into a cozy bakery"));
+            storyPageRepository.save(new StoryPage(s2.getId(), 3,
+                    "The friendly barista answered with a smile: 'Here you are! Enjoy your wonderful morning in London!' Aziz felt confident in his English.",
+                    "Xushmuomala barista tabassum bilan javob berdi: 'Marhamat! Londonda ajoyib tong o'tkazing!' Aziz o'z ingliz tiliga ishonch his qildi.",
+                    "The friendly barista answered"));
+
+            Story s3 = storyRepository.save(new Story("Elementary", "The Global Interview", "Xalqaro ish suhbati",
+                    "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&auto=format&fit=crop&q=80",
+                    "Madina xalqaro IT kompaniyasi bilan ingliz tilida suhbatdan o'tib, orzusidagi ishga erishgani haqida.", 3, 3));
+            storyPageRepository.save(new StoryPage(s3.getId(), 1,
+                    "Madina was preparing for her online video interview with a tech company in Silicon Valley. She had practiced speaking for weeks.",
+                    "Madina Kremniy vodiysidagi texnologik kompaniya bilan video intervyuga tayyorlanayotgan edi. U haftalab nutqini mashq qilgandi.",
+                    "Madina was preparing"));
+            storyPageRepository.save(new StoryPage(s3.getId(), 2,
+                    "The lead engineer asked: 'Why do you love building modern web software?' Madina took a breath and explained her passion with clarity.",
+                    "Bosh muhandis so'radi: 'Nega zamonaviy veb dasturlar yaratishni yaxshi ko'rasiz?' Madina nafas rostlab, o'z ishtiyoqini ravon tushuntirdi.",
+                    "The lead engineer asked"));
+            storyPageRepository.save(new StoryPage(s3.getId(), 3,
+                    "'Your communication skills and coding project are impressive,' the manager said. 'Welcome aboard!' Hard work always brings victory.",
+                    "'Muloqot mahoratingiz va dasturlash loyihangiz tahsinga loyiq,' dedi menejer. 'Jamoamizga xush kelibsiz!' Mehnat doim zafar keltiradi.",
+                    "Your communication skills"));
+        }
+
+        if (taskItemRepository.count() == 0) {
+            log.info("Seeding Tilsevar Practice Tasks & AI Speaking drills...");
+            // GAP_FILL
+            taskItemRepository.save(new TaskItem("Starter", "GAP_FILL", "Bo'sh joyni to'ldiring: 'To Be'",
+                    "Gap mazmuniga mos to'g'ri ko'makchi fe'lni tanlang.",
+                    "I ___ a passionate language learner from Uzbekistan.", "am", "am,is,are,be", null, 15));
+            taskItemRepository.save(new TaskItem("Beginner", "GAP_FILL", "Bo'sh joyni to'ldiring: Present Simple",
+                    "Uchinchi shaxs birlik qoidasiga amal qiling.",
+                    "My elder sister ___ in an international bank in London.", "works", "work,works,working,worked", null, 15));
+            taskItemRepository.save(new TaskItem("Elementary", "GAP_FILL", "Bo'sh joyni to'ldiring: Past Simple",
+                    "O'tgan zamondagi to'g'ri fe'l shaklini tanlang.",
+                    "Yesterday evening, we ___ a fascinating scientific video.", "watched", "watch,watches,watched,watching", null, 20));
+
+            // AUDIO
+            taskItemRepository.save(new TaskItem("Starter", "AUDIO", "Tinglab tushunish",
+                    "Audioni eshiting va to'g'ri javobni belgilang.",
+                    "Dialogda Aziz nonushtaga aynan nima buyurtma qildi?", "Choy va krussan",
+                    "Kofe va pishiriq,Choy va krussan,Meva sharbati,Issiq sho'rva", "Good morning, one tea and a croissant please", 20));
+            taskItemRepository.save(new TaskItem("Beginner", "AUDIO", "Tinglab tushunish: Vaqt",
+                    "Vaqt haqidagi audioni tinglab, to'g'ri variantni toping.",
+                    "Soat nechada uchrashuv belgilangan?", "Soat 15:00 da",
+                    "Soat 10:00 da,Soat 12:30 da,Soat 15:00 da,Soat 18:00 da", "The meeting is scheduled at 3 PM sharp", 20));
+
+            // SPEAKING (AI Speech Drills)
+            taskItemRepository.save(new TaskItem("Starter", "SPEAKING", "AI Talaffuz: Salomlashish",
+                    "Mikrofonni bosing va jumlasini aniq, baland ovozda ayting.",
+                    "Hello, my name is Aziz and I am learning English.", null, null, null, 25));
+            taskItemRepository.save(new TaskItem("Beginner", "SPEAKING", "AI Talaffuz: Odatlar",
+                    "Mikrofon orqali ushbu gapni to'g'ri talaffuz qilib o'qing.",
+                    "I want to speak English fluently and travel around the world.", null, null, null, 30));
+            taskItemRepository.save(new TaskItem("Elementary", "SPEAKING", "AI Talaffuz: Motivatsiya",
+                    "Ingliz tilida ishonch bilan ayting.",
+                    "Consistent daily practice is the true key to language mastery.", null, null, null, 35));
+
+            // QUIZ
+            taskItemRepository.save(new TaskItem("Starter", "QUIZ", "Lug'at testi",
+                    "To'g'ri tarjimani tanlang.",
+                    "'Knowledge' so'zining o'zbekcha ma'nosi nima?", "Bilim",
+                    "Boylik,Bilim,Kitob,Do'stlik", null, 15));
+            taskItemRepository.save(new TaskItem("Beginner", "QUIZ", "Grammatika testi",
+                    "Grammatik jihatdan to'g'ri gapni tanlang.",
+                    "Qaysi gap grammatik jihatdan 100% to'g'ri?", "She does not like tea",
+                    "She do not like tea,She does not likes tea,She does not like tea,She not like tea", null, 20));
+        }
+
+        // Ensure at least one primary user has an active study partner
+        List<User> allUsers = userRepository.findAll();
+        if (allUsers.size() >= 2) {
+            User u1 = allUsers.get(0);
+            User u2 = allUsers.get(1);
+            if (studyPartnerRepository.findActivePartnerForUser(u1.getId()).isEmpty()) {
+                studyPartnerRepository.save(new StudyPartner(u1.getId(), u2.getId()));
+                u1.setStudyPartnerId(u2.getId());
+                u1.setStudyPartnerName(u2.getFirstName());
+                userRepository.save(u1);
+            }
         }
     }
 }

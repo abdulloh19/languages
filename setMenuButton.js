@@ -1,6 +1,6 @@
 const https = require('https');
 
-const tunnelUrl = process.argv[2] || "https://olive-women-itch.loca.lt";
+const tunnelUrl = process.argv[2] || "https://hungry-cars-eat.loca.lt";
 
 const data = JSON.stringify({
   menu_button: {
